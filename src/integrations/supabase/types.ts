@@ -14,7 +14,119 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      bills: {
+        Row: {
+          amount: number
+          created_at: string
+          due_date: string
+          id: string
+          is_recurring: boolean | null
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          due_date: string
+          id?: string
+          is_recurring?: boolean | null
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          due_date?: string
+          id?: string
+          is_recurring?: boolean | null
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      linked_accounts: {
+        Row: {
+          account_name: string | null
+          account_type: string | null
+          created_at: string
+          id: string
+          institution_name: string | null
+          plaid_access_token: string
+          plaid_item_id: string
+          user_id: string
+        }
+        Insert: {
+          account_name?: string | null
+          account_type?: string | null
+          created_at?: string
+          id?: string
+          institution_name?: string | null
+          plaid_access_token: string
+          plaid_item_id: string
+          user_id: string
+        }
+        Update: {
+          account_name?: string | null
+          account_type?: string | null
+          created_at?: string
+          id?: string
+          institution_name?: string | null
+          plaid_access_token?: string
+          plaid_item_id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      transactions: {
+        Row: {
+          amount: number
+          category: string | null
+          created_at: string
+          date: string
+          id: string
+          is_manual: boolean | null
+          linked_account_id: string | null
+          name: string
+          plaid_transaction_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          category?: string | null
+          created_at?: string
+          date: string
+          id?: string
+          is_manual?: boolean | null
+          linked_account_id?: string | null
+          name: string
+          plaid_transaction_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          category?: string | null
+          created_at?: string
+          date?: string
+          id?: string
+          is_manual?: boolean | null
+          linked_account_id?: string | null
+          name?: string
+          plaid_transaction_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_linked_account_id_fkey"
+            columns: ["linked_account_id"]
+            isOneToOne: false
+            referencedRelation: "linked_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
