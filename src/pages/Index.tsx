@@ -1,23 +1,48 @@
+import { useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/hooks/useAuth";
 import NetPosition from "@/components/NetPosition";
 import MonthlyPace from "@/components/MonthlyPace";
 import UpcomingBills from "@/components/UpcomingBills";
 import RecentTransactions from "@/components/RecentTransactions";
-import { Plus } from "lucide-react";
+import PlaidLink from "@/components/PlaidLink";
+import { LogOut } from "lucide-react";
 
 const Index = () => {
+  const { user, loading, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!loading && !user) navigate("/auth");
+  }, [user, loading, navigate]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <p className="text-muted-foreground">Loading…</p>
+      </div>
+    );
+  }
+
+  if (!user) return null;
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
       <header className="border-b border-border">
         <div className="max-w-4xl mx-auto px-6 py-5 flex items-center justify-between">
           <h1 className="font-heading text-lg tracking-tight text-foreground">Wallet Watch</h1>
-          <button className="w-9 h-9 rounded-full bg-primary flex items-center justify-center hover:opacity-90 transition-opacity">
-            <Plus className="w-4 h-4 text-primary-foreground" />
-          </button>
+          <div className="flex items-center gap-3">
+            <PlaidLink />
+            <button
+              onClick={signOut}
+              className="w-9 h-9 rounded-full bg-muted flex items-center justify-center hover:opacity-90 transition-opacity"
+            >
+              <LogOut className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </div>
         </div>
       </header>
 
-      {/* Main content */}
       <main className="max-w-4xl mx-auto px-6 py-10 space-y-8">
         <NetPosition />
 
@@ -34,7 +59,8 @@ const Index = () => {
           </p>
         </footer>
       </main>
-    </div>);
+    </div>
+  );
 };
 
 export default Index;
