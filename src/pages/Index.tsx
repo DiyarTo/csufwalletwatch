@@ -10,7 +10,8 @@ const Index = () => {
       {/* Header */}
       <header className="border-b border-border">
         <div className="max-w-4xl mx-auto px-6 py-5 flex items-center justify-between">
-          <h1 className="font-heading text-lg tracking-tight text-foreground">Ledger</h1>
+          <h1 className="font-heading text-lg tracking-tight text-foreground">
+</h1>
           <button className="w-9 h-9 rounded-full bg-primary flex items-center justify-center hover:opacity-90 transition-opacity">
             <Plus className="w-4 h-4 text-primary-foreground" />
           </button>
@@ -34,8 +35,7 @@ const Index = () => {
           </p>
         </footer>
       </main>
-    </div>
-  );
+    </div>);
 };
 
 export default Index;
