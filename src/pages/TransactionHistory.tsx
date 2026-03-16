@@ -212,10 +212,17 @@ export default function TransactionHistory() {
         </button>
 
         <button
-          onClick={handleAddClick}
+          onClick={() => {
+            if (showForm && !editingId) {
+              setShowForm(false);
+              clearForm();
+            } else {
+              handleAddClick();
+            }
+          }}
           className="border rounded-md px-4 py-2"
         >
-          Add
+          {showForm && !editingId ? "Cancel" : "Add"}
         </button>
 
         <button
