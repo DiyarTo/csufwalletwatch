@@ -207,7 +207,7 @@ export default function TransactionHistory() {
       {showEditor && (
         <div className="mt-6 border rounded-lg p-4 space-y-4">
           <h2 className="text-lg font-semibold">
-            {editingId ? "Edit Custom Transaction" : "Add Custom Transaction"}
+            {editingId ? "Edit Transaction" : "Add Transaction"}
           </h2>
 
           <div className="flex flex-wrap gap-3">
