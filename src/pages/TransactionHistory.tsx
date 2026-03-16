@@ -93,7 +93,7 @@ export default function TransactionHistory() {
           }}
           className="border rounded-md px-4 py-2"
         >
-          Clear
+          Reset
         </button>
 
       </div>
