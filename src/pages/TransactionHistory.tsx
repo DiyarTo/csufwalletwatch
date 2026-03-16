@@ -200,7 +200,7 @@ export default function TransactionHistory() {
           }}
           className="border rounded-md px-4 py-2"
         >
-          {showEditor ? "Close Edit" : "Edit"}
+          {showEditor ? "Cancel" : "Edit"}
         </button>
       </div>
 
