@@ -13,7 +13,7 @@ const sampleTransactions: Transaction[] = [
   {
     id: "1",
     date: "2026-03-01",
-    name: "Amazon Paycheck",
+    name: "Work Paycheck",
     amount: 1250,
     category: "Income",
     type: "income",
@@ -33,6 +33,14 @@ const sampleTransactions: Transaction[] = [
     amount: -48.2,
     category: "Transportation",
     type: "expense",
+  },
+  {
+    id: "4",
+    date: "2026-03-08",
+    name: "Work Paycheck",
+    amount: 1450,
+    category: "Income",
+    type: "income",
   },
 ];
 
