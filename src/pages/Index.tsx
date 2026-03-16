@@ -7,7 +7,6 @@ import UpcomingBills from "@/components/UpcomingBills";
 import RecentTransactions from "@/components/RecentTransactions";
 import PlaidLink from "@/components/PlaidLink";
 import { LogOut } from "lucide-react";
-import { Link } from "react-router-dom";
 
 const Index = () => {
   const { user, loading, signOut } = useAuth();
