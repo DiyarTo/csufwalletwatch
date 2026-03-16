@@ -51,7 +51,20 @@ const Index = () => {
           <UpcomingBills />
         </div>
 
-        <RecentTransactions />
+        <div className="flex justify-between items-center">
+          <h2 className="text-sm font-medium text-muted-foreground">
+            Recent Transactions
+          </h2>
+
+        <Link
+          to="/transactions"
+          className="text-sm text-primary hover:underline"
+        >
+          View All →
+        </Link>
+      </div>
+
+      <RecentTransactions />
 
         <footer className="text-center py-8">
           <p className="text-xs text-muted-foreground">
