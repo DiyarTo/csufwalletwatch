@@ -10,6 +10,17 @@ type Transaction = {
   source: "manual" | "bank";
 };
 
+const categoryOptions = [
+  "Income",
+  "Food",
+  "Transportation",
+  "Shopping",
+  "Entertainment",
+  "Bills",
+  "Health",
+  "Other",
+];
+
 export default function TransactionHistory() {
   const [transactions, setTransactions] = useState<Transaction[]>([
     {
@@ -69,6 +80,7 @@ export default function TransactionHistory() {
   const [formName, setFormName] = useState("");
   const [formAmount, setFormAmount] = useState("");
   const [formCategory, setFormCategory] = useState("");
+  const [formType, setFormType] = useState<"income" | "expense">("expense");
   const [formDate, setFormDate] = useState("");
 
   const sortedTransactions = [...transactions].sort((a, b) =>
@@ -85,6 +97,7 @@ export default function TransactionHistory() {
     setFormName("");
     setFormAmount("");
     setFormCategory("");
+    setFormType("expense");
     setFormDate("");
     setEditingId(null);
   }
@@ -98,14 +111,8 @@ export default function TransactionHistory() {
   function handleEditToggle() {
     const nextEditMode = !isEditMode;
     setIsEditMode(nextEditMode);
-
-    if (!nextEditMode) {
-      setShowForm(false);
-      clearForm();
-    } else {
-      setShowForm(false);
-      clearForm();
-    }
+    setShowForm(false);
+    clearForm();
   }
 
   function handleSubmitTransaction() {
@@ -113,7 +120,9 @@ export default function TransactionHistory() {
 
     const parsedAmount = Number(formAmount);
 
-    if (Number.isNaN(parsedAmount)) return;
+    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) return;
+
+    const signedAmount = formType === "expense" ? -parsedAmount : parsedAmount;
 
     if (editingId) {
       setTransactions((prev) =>
@@ -122,10 +131,10 @@ export default function TransactionHistory() {
             ? {
                 ...transaction,
                 name: formName,
-                amount: parsedAmount,
+                amount: signedAmount,
                 category: formCategory,
                 date: formDate,
-                type: parsedAmount >= 0 ? "income" : "expense",
+                type: formType,
               }
             : transaction
         )
@@ -134,10 +143,10 @@ export default function TransactionHistory() {
       const newTransaction: Transaction = {
         id: Date.now().toString(),
         name: formName,
-        amount: parsedAmount,
+        amount: signedAmount,
         category: formCategory,
         date: formDate,
-        type: parsedAmount >= 0 ? "income" : "expense",
+        type: formType,
         source: "manual",
       };
 
@@ -154,8 +163,9 @@ export default function TransactionHistory() {
 
     setEditingId(transaction.id);
     setFormName(transaction.name);
-    setFormAmount(transaction.amount.toString());
+    setFormAmount(Math.abs(transaction.amount).toString());
     setFormCategory(transaction.category);
+    setFormType(transaction.type);
     setFormDate(transaction.date);
     setShowForm(true);
   }
@@ -254,16 +264,34 @@ export default function TransactionHistory() {
               className="border rounded-md px-3 py-2"
             />
 
-            <input
-              type="text"
-              placeholder="Category"
+            <select
               value={formCategory}
               onChange={(e) => setFormCategory(e.target.value)}
               className="border rounded-md px-3 py-2"
-            />
+            >
+              <option value="">Select Category</option>
+              {categoryOptions.map((category) => (
+                <option key={category} value={category}>
+                  {category}
+                </option>
+              ))}
+            </select>
+
+            <select
+              value={formType}
+              onChange={(e) =>
+                setFormType(e.target.value as "income" | "expense")
+              }
+              className="border rounded-md px-3 py-2"
+            >
+              <option value="expense">Expense</option>
+              <option value="income">Income</option>
+            </select>
 
             <input
               type="number"
+              min="0"
+              step="0.01"
               placeholder="Amount"
               value={formAmount}
               onChange={(e) => setFormAmount(e.target.value)}
