@@ -74,13 +74,8 @@ export default function Goals() {
   const handleDeleteGoal = (goalId: string) => {
     setGoals((prev) => prev.filter((goal) => goal.id !== goalId));
 
-    if (selectedGoalId === goalId) {
-      setSelectedGoalId("");
-    }
-
-    if (editingGoalId === goalId) {
-      resetForm();
-    }
+    if (selectedGoalId === goalId) setSelectedGoalId("");
+    if (editingGoalId === goalId) resetForm();
   };
 
   const handleAddContribution = (e: React.FormEvent) => {
@@ -106,25 +101,17 @@ export default function Goals() {
   return (
     <div className="min-h-screen bg-background">
       <main className="max-w-4xl mx-auto px-6 py-10 space-y-8">
+
+        {/* Header */}
         <div className="flex items-center justify-between">
           <Link
             to="/"
-            className="text-sm text-primary hover:underline"
+            className="text-sm text-muted-foreground hover:text-foreground"
           >
-            ← Back
+            ← Dashboard
           </Link>
-        
+
           <h1 className="text-2xl font-bold">My Goals</h1>
-        
-          {!showCreateForm && (
-            <button
-              onClick={() => setShowCreateForm(true)}
-              className="px-4 py-2 rounded bg-black text-white"
-            >
-              + New Goal
-            </button>
-          )}
-        </div>
 
           {!showCreateForm && (
             <button
@@ -177,7 +164,7 @@ export default function Goals() {
           )}
         </div>
 
-        {/* Create / Edit Goal Form */}
+        {/* Create / Edit Form */}
         {showCreateForm && (
           <div className="border rounded-lg p-4 space-y-4">
             <h2 className="text-lg font-semibold">
@@ -244,18 +231,12 @@ export default function Goals() {
                   : 0;
 
               return (
-                <div
-                  key={goal.id}
-                  className="border rounded-lg p-4 space-y-3"
-                >
-                  <div className="flex items-start justify-between gap-4">
+                <div key={goal.id} className="border rounded-lg p-4 space-y-3">
+                  <div className="flex justify-between items-start">
                     <div>
                       <p className="font-semibold">{goal.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        Target: ${goal.targetAmount.toFixed(2)}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        Saved: ${goal.savedAmount.toFixed(2)}
+                        ${goal.savedAmount.toFixed(2)} / ${goal.targetAmount.toFixed(2)}
                       </p>
                       {goal.deadline && (
                         <p className="text-sm text-muted-foreground">
@@ -267,28 +248,29 @@ export default function Goals() {
                     <div className="flex gap-2">
                       <button
                         onClick={() => handleEditGoal(goal)}
-                        className="px-3 py-1 rounded border text-sm"
+                        className="px-3 py-1 text-sm border rounded"
                       >
                         Edit
                       </button>
 
                       <button
                         onClick={() => handleDeleteGoal(goal.id)}
-                        className="px-3 py-1 rounded border text-sm"
+                        className="px-3 py-1 text-sm border rounded"
                       >
                         Delete
                       </button>
                     </div>
                   </div>
 
-                  <div className="space-y-1">
-                    <div className="w-full bg-muted rounded-full h-2">
+                  {/* Progress Bar */}
+                  <div>
+                    <div className="w-full bg-muted h-2 rounded-full">
                       <div
-                        className="h-2 rounded-full bg-black"
+                        className="h-2 bg-black rounded-full"
                         style={{ width: `${percent}%` }}
                       />
                     </div>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs text-muted-foreground mt-1">
                       {percent.toFixed(0)}% complete
                     </p>
                   </div>
@@ -297,6 +279,7 @@ export default function Goals() {
             })
           )}
         </div>
+
       </main>
     </div>
   );
