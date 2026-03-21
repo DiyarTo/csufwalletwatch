@@ -99,7 +99,7 @@ const Auth = () => {
     <div className="min-h-screen bg-background flex items-center justify-center px-6">
       <div className="w-full max-w-sm">
         <h1 className="font-heading text-3xl font-bold text-foreground text-center mb-8">
-          Wallet Watch
+          Wallet Watcher
         </h1>
 
         <div className="bg-card rounded-lg p-6">
