@@ -8,7 +8,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 
 const Auth = () => {
-  const [isLogin, setIsLogin] = useState(true);
+  const [mode, setMode] = useState<"login" | "signup" | "forgot">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -17,7 +17,6 @@ const Auth = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // Redirect if already logged in
   useEffect(() => {
     if (user) navigate("/");
   }, [user, navigate]);
@@ -26,18 +25,24 @@ const Auth = () => {
     e.preventDefault();
     setLoading(true);
 
-    if (isLogin) {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+    if (mode === "forgot") {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: window.location.origin + "/reset-password",
       });
-
       if (error) {
-        toast({
-          title: "Login failed",
-          description: error.message,
-          variant: "destructive",
-        });
+        toast({ title: "Reset failed", description: error.message, variant: "destructive" });
+      } else {
+        toast({ title: "Check your email", description: "We sent you a password reset link." });
+        setMode("login");
+      }
+      setLoading(false);
+      return;
+    }
+
+    if (mode === "login") {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) {
+        toast({ title: "Login failed", description: error.message, variant: "destructive" });
       } else {
         navigate("/");
       }
@@ -45,55 +50,19 @@ const Auth = () => {
       const { error } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          emailRedirectTo: window.location.origin,
-        },
+        options: { emailRedirectTo: window.location.origin },
       });
-
       if (error) {
-        toast({
-          title: "Sign up failed",
-          description: error.message,
-          variant: "destructive",
-        });
+        toast({ title: "Sign up failed", description: error.message, variant: "destructive" });
       } else {
-        toast({
-          title: "Check your email",
-          description: "We sent you a confirmation link.",
-        });
+        toast({ title: "Check your email", description: "We sent you a confirmation link." });
       }
     }
 
     setLoading(false);
   };
 
-  const handleForgotPassword = async () => {
-    if (!email) {
-      toast({
-        title: "Enter your email first",
-        description: "We need your email to send a reset link.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-
-    if (error) {
-      toast({
-        title: "Reset failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    } else {
-      toast({
-        title: "Check your email",
-        description: "We sent you a password reset link.",
-      });
-    }
-  };
+  const headingText = mode === "login" ? "Log In" : mode === "signup" ? "Sign Up" : "Reset Password";
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center px-6">
@@ -104,7 +73,7 @@ const Auth = () => {
 
         <div className="bg-card rounded-lg p-6">
           <p className="text-sm font-body text-muted-foreground tracking-wide uppercase mb-4">
-            {isLogin ? "Log In" : "Sign Up"}
+            {headingText}
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -120,43 +89,61 @@ const Auth = () => {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                required
-                minLength={6}
-              />
-            </div>
+            {mode !== "forgot" && (
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  minLength={6}
+                />
+              </div>
+            )}
 
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Loading…" : isLogin ? "Log In" : "Sign Up"}
+              {loading
+                ? "Loading…"
+                : mode === "forgot"
+                  ? "Send Reset Link"
+                  : mode === "login"
+                    ? "Log In"
+                    : "Sign Up"}
             </Button>
           </form>
 
-          {/* Forgot Password */}
-          <button
-            type="button"
-            onClick={handleForgotPassword}
-            className="mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-center"
-          >
-            Forgot password?
-          </button>
+          {mode === "login" && (
+            <button
+              type="button"
+              onClick={() => setMode("forgot")}
+              className="mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-center"
+            >
+              Forgot password?
+            </button>
+          )}
 
-          {/* Toggle Login/Signup */}
-          <button
-            type="button"
-            onClick={() => setIsLogin(!isLogin)}
-            className="mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-center"
-          >
-            {isLogin
-              ? "Don't have an account? Sign up"
-              : "Already have an account? Log in"}
-          </button>
+          {mode === "forgot" ? (
+            <button
+              type="button"
+              onClick={() => setMode("login")}
+              className="mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-center"
+            >
+              Back to login
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setMode(mode === "login" ? "signup" : "login")}
+              className="mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-center"
+            >
+              {mode === "login"
+                ? "Don't have an account? Sign up"
+                : "Already have an account? Log in"}
+            </button>
+          )}
         </div>
       </div>
     </div>
