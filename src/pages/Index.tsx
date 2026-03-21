@@ -57,7 +57,7 @@ const Index = () => {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <MonthlyPace />
-          <UpcomingBills />
+          <GoalsPreview />
         </div>
 
         <div className="flex justify-between items-center">
