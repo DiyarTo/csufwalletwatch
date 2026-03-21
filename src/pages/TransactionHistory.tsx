@@ -8,9 +8,8 @@ type Transaction = {
   date: string;
   name: string;
   amount: number;
-  category: string;
-  type: "income" | "expense";
-  source: "manual" | "bank";
+  category: string | null;
+  is_manual: boolean | null;
 };
 
 const categoryOptions = [
@@ -62,7 +61,7 @@ export default function TransactionHistory() {
 
     const { data, error } = await supabase
       .from("transactions")
-      .select("id, user_id, date, name, amount, category, type, source")
+      .select("id, user_id, date, name, amount, category, is_manual")
       .eq("user_id", user.id)
       .order("date", { ascending: false });
 
@@ -120,8 +119,6 @@ export default function TransactionHistory() {
       error: userError,
     } = await supabase.auth.getUser();
 
-    console.log("USER FROM SUPABASE:", user);
-
     if (userError || !user) {
       console.error("User fetch error:", userError);
       return;
@@ -129,8 +126,7 @@ export default function TransactionHistory() {
 
     if (editingId) {
       const existingTransaction = transactions.find((t) => t.id === editingId);
-
-      if (!existingTransaction || existingTransaction.source !== "manual") return;
+      if (!existingTransaction || !existingTransaction.is_manual) return;
 
       const { error } = await supabase
         .from("transactions")
@@ -139,10 +135,8 @@ export default function TransactionHistory() {
           amount: signedAmount,
           category: formCategory,
           date: formDate,
-          type: formType,
         })
         .eq("id", editingId)
-        .eq("source", "manual")
         .eq("user_id", user.id);
 
       if (error) {
@@ -157,8 +151,7 @@ export default function TransactionHistory() {
           amount: signedAmount,
           category: formCategory,
           date: formDate,
-          type: formType,
-          source: "manual",
+          is_manual: true,
         },
       ]);
 
@@ -175,21 +168,20 @@ export default function TransactionHistory() {
   }
 
   function selectTransactionForEditing(transaction: Transaction) {
-    if (!isEditMode || transaction.source !== "manual") return;
+    if (!isEditMode || !transaction.is_manual) return;
 
     setEditingId(transaction.id);
     setFormName(transaction.name);
     setFormAmount(Math.abs(transaction.amount).toString());
-    setFormCategory(transaction.category);
-    setFormType(transaction.type);
+    setFormCategory(transaction.category || "");
+    setFormType(transaction.amount < 0 ? "expense" : "income");
     setFormDate(transaction.date);
     setShowForm(true);
   }
 
   async function removeTransaction(id: string) {
     const transactionToRemove = transactions.find((t) => t.id === id);
-
-    if (!transactionToRemove || transactionToRemove.source !== "manual") return;
+    if (!transactionToRemove || !transactionToRemove.is_manual) return;
 
     const {
       data: { user },
@@ -205,7 +197,6 @@ export default function TransactionHistory() {
       .from("transactions")
       .delete()
       .eq("id", id)
-      .eq("source", "manual")
       .eq("user_id", user.id);
 
     if (error) {
@@ -374,7 +365,7 @@ export default function TransactionHistory() {
               key={transaction.id}
               onClick={() => selectTransactionForEditing(transaction)}
               className={`flex justify-between items-center border-b pb-2 ${
-                isEditMode && transaction.source === "manual"
+                isEditMode && transaction.is_manual
                   ? "cursor-pointer hover:bg-muted/50 rounded-md px-2 py-2"
                   : ""
               }`}
@@ -383,7 +374,7 @@ export default function TransactionHistory() {
                 <p className="font-medium">{transaction.name}</p>
                 <p className="text-sm text-muted-foreground">
                   {transaction.category} • {transaction.date}
-                  {transaction.source === "manual" ? " • Custom" : " • Bank"}
+                  {transaction.is_manual ? " • Custom" : " • Bank"}
                 </p>
               </div>
 
@@ -398,7 +389,7 @@ export default function TransactionHistory() {
                     : `+$${transaction.amount.toFixed(2)}`}
                 </p>
 
-                {isEditMode && transaction.source === "manual" && (
+                {isEditMode && transaction.is_manual && (
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
