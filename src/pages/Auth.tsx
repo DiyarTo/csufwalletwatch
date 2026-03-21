@@ -17,10 +17,10 @@ const Auth = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // 🔥 DEBUG: disable redirect + log user
+  // Redirect if already logged in
   useEffect(() => {
-    console.log("AUTH PAGE LOADED", user);
-  }, [user]);
+    if (user) navigate("/");
+  }, [user, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,21 +96,22 @@ const Auth = () => {
   };
 
   return (
-    <div className="min-h-screen bg-red-200 flex items-center justify-center px-6">
+    <div className="min-h-screen bg-background flex items-center justify-center px-6">
       <div className="w-full max-w-sm">
-        <h1 className="text-3xl font-bold text-center mb-8 text-red-700">
-          AUTH PAGE TEST 🚨
+        <h1 className="font-heading text-3xl font-bold text-foreground text-center mb-8">
+          Wallet Watch
         </h1>
 
-        <div className="bg-white rounded-lg p-6 border-4 border-red-500">
-          <p className="text-sm uppercase mb-4 text-center">
+        <div className="bg-card rounded-lg p-6">
+          <p className="text-sm font-body text-muted-foreground tracking-wide uppercase mb-4">
             {isLogin ? "Log In" : "Sign Up"}
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label>Email</Label>
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
               <Input
+                id="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -119,36 +120,38 @@ const Auth = () => {
               />
             </div>
 
-            <div>
-              <Label>Password</Label>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
               <Input
+                id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
+                minLength={6}
               />
             </div>
 
-            <Button type="submit" className="w-full">
-              {isLogin ? "Log In" : "Sign Up"}
+            <Button type="submit" className="w-full" disabled={loading}>
+              {loading ? "Loading…" : isLogin ? "Log In" : "Sign Up"}
             </Button>
           </form>
 
-          {/* 🔴 SUPER VISIBLE BUTTON */}
-          <div className="mt-4 bg-yellow-200 p-2">
-            <button
-              type="button"
-              onClick={handleForgotPassword}
-              className="w-full bg-red-500 text-white font-bold py-2 rounded"
-            >
-              🚨 FORGOT PASSWORD BUTTON 🚨
-            </button>
-          </div>
-
+          {/* Forgot Password */}
           <button
+            type="button"
+            onClick={handleForgotPassword}
+            className="mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-center"
+          >
+            Forgot password?
+          </button>
+
+          {/* Toggle Login/Signup */}
+          <button
+            type="button"
             onClick={() => setIsLogin(!isLogin)}
-            className="mt-4 text-sm w-full text-center underline"
+            className="mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-center"
           >
             {isLogin
               ? "Don't have an account? Sign up"
