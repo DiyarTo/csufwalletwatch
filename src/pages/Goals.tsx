@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 type Goal = {
   id: string;
@@ -106,7 +107,24 @@ export default function Goals() {
     <div className="min-h-screen bg-background">
       <main className="max-w-4xl mx-auto px-6 py-10 space-y-8">
         <div className="flex items-center justify-between">
+          <Link
+            to="/"
+            className="text-sm text-primary hover:underline"
+          >
+            ← Back
+          </Link>
+        
           <h1 className="text-2xl font-bold">My Goals</h1>
+        
+          {!showCreateForm && (
+            <button
+              onClick={() => setShowCreateForm(true)}
+              className="px-4 py-2 rounded bg-black text-white"
+            >
+              + New Goal
+            </button>
+          )}
+        </div>
 
           {!showCreateForm && (
             <button
