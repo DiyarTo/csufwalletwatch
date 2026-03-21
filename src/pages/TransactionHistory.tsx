@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 type Transaction = {
   id: string;
@@ -23,53 +24,8 @@ const categoryOptions = [
 ];
 
 export default function TransactionHistory() {
-  const [transactions, setTransactions] = useState<Transaction[]>([
-    {
-      id: "1",
-      date: "2026-03-01",
-      name: "Work Paycheck",
-      amount: 1250,
-      category: "Income",
-      type: "income",
-      source: "bank",
-    },
-    {
-      id: "2",
-      date: "2026-03-03",
-      name: "Chipotle",
-      amount: -14.75,
-      category: "Food",
-      type: "expense",
-      source: "bank",
-    },
-    {
-      id: "3",
-      date: "2026-03-05",
-      name: "Gas Station",
-      amount: -48.2,
-      category: "Transportation",
-      type: "expense",
-      source: "bank",
-    },
-    {
-      id: "4",
-      date: "2026-03-08",
-      name: "Work Paycheck",
-      amount: 1450,
-      category: "Income",
-      type: "income",
-      source: "bank",
-    },
-    {
-      id: "5",
-      date: "2026-03-06",
-      name: "Cash Dinner",
-      amount: -22,
-      category: "Food",
-      type: "expense",
-      source: "manual",
-    },
-  ]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -83,6 +39,27 @@ export default function TransactionHistory() {
   const [formCategory, setFormCategory] = useState("");
   const [formType, setFormType] = useState<"income" | "expense">("expense");
   const [formDate, setFormDate] = useState("");
+
+  useEffect(() => {
+    fetchTransactions();
+  }, []);
+
+  async function fetchTransactions() {
+    setLoading(true);
+
+    const { data, error } = await supabase
+      .from("transactions")
+      .select("id, date, name, amount, category, type, source")
+      .order("date", { ascending: false });
+
+    if (error) {
+      console.error("Fetch error:", error);
+    } else {
+      setTransactions((data as Transaction[]) || []);
+    }
+
+    setLoading(false);
+  }
 
   const sortedTransactions = [...transactions].sort((a, b) =>
     b.date.localeCompare(a.date)
@@ -116,44 +93,54 @@ export default function TransactionHistory() {
     clearForm();
   }
 
-  function handleSubmitTransaction() {
+  async function handleSubmitTransaction() {
     if (!formName || !formAmount || !formCategory || !formDate) return;
 
     const parsedAmount = Number(formAmount);
-
     if (Number.isNaN(parsedAmount) || parsedAmount <= 0) return;
 
     const signedAmount = formType === "expense" ? -parsedAmount : parsedAmount;
 
     if (editingId) {
-      setTransactions((prev) =>
-        prev.map((transaction) =>
-          transaction.id === editingId && transaction.source === "manual"
-            ? {
-                ...transaction,
-                name: formName,
-                amount: signedAmount,
-                category: formCategory,
-                date: formDate,
-                type: formType,
-              }
-            : transaction
-        )
-      );
-    } else {
-      const newTransaction: Transaction = {
-        id: Date.now().toString(),
-        name: formName,
-        amount: signedAmount,
-        category: formCategory,
-        date: formDate,
-        type: formType,
-        source: "manual",
-      };
+      const existingTransaction = transactions.find((t) => t.id === editingId);
 
-      setTransactions((prev) => [...prev, newTransaction]);
+      if (!existingTransaction || existingTransaction.source !== "manual") return;
+
+      const { error } = await supabase
+        .from("transactions")
+        .update({
+          name: formName,
+          amount: signedAmount,
+          category: formCategory,
+          date: formDate,
+          type: formType,
+        })
+        .eq("id", editingId)
+        .eq("source", "manual");
+
+      if (error) {
+        console.error("Update error:", error);
+        return;
+      }
+    } else {
+      const { error } = await supabase.from("transactions").insert([
+        {
+          name: formName,
+          amount: signedAmount,
+          category: formCategory,
+          date: formDate,
+          type: formType,
+          source: "manual",
+        },
+      ]);
+
+      if (error) {
+        console.error("Insert error:", error);
+        return;
+      }
     }
 
+    await fetchTransactions();
     clearForm();
     setShowForm(false);
     setIsEditMode(false);
@@ -171,13 +158,23 @@ export default function TransactionHistory() {
     setShowForm(true);
   }
 
-  function removeTransaction(id: string) {
-    setTransactions((prev) =>
-      prev.filter(
-        (transaction) =>
-          !(transaction.id === id && transaction.source === "manual")
-      )
-    );
+  async function removeTransaction(id: string) {
+    const transactionToRemove = transactions.find((t) => t.id === id);
+
+    if (!transactionToRemove || transactionToRemove.source !== "manual") return;
+
+    const { error } = await supabase
+      .from("transactions")
+      .delete()
+      .eq("id", id)
+      .eq("source", "manual");
+
+    if (error) {
+      console.error("Delete error:", error);
+      return;
+    }
+
+    await fetchTransactions();
 
     if (editingId === id) {
       clearForm();
@@ -187,8 +184,6 @@ export default function TransactionHistory() {
 
   return (
     <div className="min-h-screen p-6">
-
-      {/* HEADER */}
       <div className="flex items-center justify-between mb-2">
         <Link
           to="/"
@@ -204,7 +199,6 @@ export default function TransactionHistory() {
 
       <p className="text-muted-foreground">View all income and expenses.</p>
 
-      {/* FILTERS + ACTIONS */}
       <div className="mt-4 flex flex-wrap gap-4 items-end">
         <div className="flex flex-col">
           <label className="text-sm">Start Date</label>
@@ -264,7 +258,6 @@ export default function TransactionHistory() {
         </p>
       )}
 
-      {/* FORM */}
       {showForm && (
         <div className="mt-6 border rounded-lg p-4 space-y-4">
           <h2 className="text-lg font-semibold">
@@ -331,55 +324,56 @@ export default function TransactionHistory() {
         </div>
       )}
 
-      {/* LIST */}
       <div className="mt-6 border rounded-lg p-4 space-y-4">
-        {filteredTransactions.length === 0 && (
+        {loading ? (
+          <p>Loading transactions...</p>
+        ) : filteredTransactions.length === 0 ? (
           <p>No transactions in this date range.</p>
-        )}
+        ) : (
+          filteredTransactions.map((transaction) => (
+            <div
+              key={transaction.id}
+              onClick={() => selectTransactionForEditing(transaction)}
+              className={`flex justify-between items-center border-b pb-2 ${
+                isEditMode && transaction.source === "manual"
+                  ? "cursor-pointer hover:bg-muted/50 rounded-md px-2 py-2"
+                  : ""
+              }`}
+            >
+              <div>
+                <p className="font-medium">{transaction.name}</p>
+                <p className="text-sm text-muted-foreground">
+                  {transaction.category} • {transaction.date}
+                  {transaction.source === "manual" ? " • Custom" : " • Bank"}
+                </p>
+              </div>
 
-        {filteredTransactions.map((transaction) => (
-          <div
-            key={transaction.id}
-            onClick={() => selectTransactionForEditing(transaction)}
-            className={`flex justify-between items-center border-b pb-2 ${
-              isEditMode && transaction.source === "manual"
-                ? "cursor-pointer hover:bg-muted/50 rounded-md px-2 py-2"
-                : ""
-            }`}
-          >
-            <div>
-              <p className="font-medium">{transaction.name}</p>
-              <p className="text-sm text-muted-foreground">
-                {transaction.category} • {transaction.date}
-                {transaction.source === "manual" ? " • Custom" : " • Bank"}
-              </p>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <p
-                className={`font-semibold ${
-                  transaction.amount < 0 ? "text-red-500" : "text-green-500"
-                }`}
-              >
-                {transaction.amount < 0
-                  ? `-$${Math.abs(transaction.amount).toFixed(2)}`
-                  : `+$${transaction.amount.toFixed(2)}`}
-              </p>
-
-              {isEditMode && transaction.source === "manual" && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    removeTransaction(transaction.id);
-                  }}
-                  className="border rounded-md px-2 py-1 text-sm"
+              <div className="flex items-center gap-3">
+                <p
+                  className={`font-semibold ${
+                    transaction.amount < 0 ? "text-red-500" : "text-green-500"
+                  }`}
                 >
-                  X
-                </button>
-              )}
+                  {transaction.amount < 0
+                    ? `-$${Math.abs(transaction.amount).toFixed(2)}`
+                    : `+$${transaction.amount.toFixed(2)}`}
+                </p>
+
+                {isEditMode && transaction.source === "manual" && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeTransaction(transaction.id);
+                    }}
+                    className="border rounded-md px-2 py-1 text-sm"
+                  >
+                    X
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </div>
   );
