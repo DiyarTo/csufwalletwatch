@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 type Transaction = {
   id: string;
@@ -186,10 +187,24 @@ export default function TransactionHistory() {
 
   return (
     <div className="min-h-screen p-6">
-      <h1 className="text-3xl font-bold">Transaction History</h1>
+
+      {/* HEADER */}
+      <div className="flex items-center justify-between mb-2">
+        <Link
+          to="/"
+          className="text-sm text-muted-foreground hover:text-foreground"
+        >
+          ← Dashboard
+        </Link>
+
+        <h1 className="text-3xl font-bold">Transaction History</h1>
+
+        <div className="w-[100px]" />
+      </div>
 
       <p className="text-muted-foreground">View all income and expenses.</p>
 
+      {/* FILTERS + ACTIONS */}
       <div className="mt-4 flex flex-wrap gap-4 items-end">
         <div className="flex flex-col">
           <label className="text-sm">Start Date</label>
@@ -249,6 +264,7 @@ export default function TransactionHistory() {
         </p>
       )}
 
+      {/* FORM */}
       {showForm && (
         <div className="mt-6 border rounded-lg p-4 space-y-4">
           <h2 className="text-lg font-semibold">
@@ -315,6 +331,7 @@ export default function TransactionHistory() {
         </div>
       )}
 
+      {/* LIST */}
       <div className="mt-6 border rounded-lg p-4 space-y-4">
         {filteredTransactions.length === 0 && (
           <p>No transactions in this date range.</p>
