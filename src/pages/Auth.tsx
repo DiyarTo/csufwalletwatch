@@ -137,17 +137,13 @@ const Auth = () => {
             </Button>
           </form>
 
-          {/* Forgot Password (only show on login) */}
-          {isLogin && (
-            <button
-              type="button"
-              onClick={handleForgotPassword}
-              className="mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-center"
-            >
-              Forgot password?
-            </button>
-          )}
-
+          <button
+            type="button"
+            onClick={handleForgotPassword}
+            className="mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-center"
+          >
+            Forgot password?
+          </button>
           {/* Toggle Login/Signup */}
           <button
             onClick={() => setIsLogin(!isLogin)}
