@@ -33,7 +33,15 @@ const Index = () => {
         <div className="max-w-4xl mx-auto px-6 py-5 flex items-center justify-between">
           <h1 className="font-heading text-lg tracking-tight text-foreground">Wallet Watch</h1>
           <div className="flex items-center gap-3">
+            <Link
+              to="/goals"
+              className="text-sm text-primary hover:underline"
+            >
+              Goals
+            </Link>
+          
             <PlaidLink />
+          
             <button
               onClick={signOut}
               className="w-9 h-9 rounded-full bg-muted flex items-center justify-center hover:opacity-90 transition-opacity"
