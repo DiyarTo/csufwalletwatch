@@ -1,16 +1,19 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 
 type Goal = {
   id: string;
+  user_id: string;
   name: string;
-  targetAmount: number;
-  savedAmount: number;
-  deadline?: string;
+  target_amount: number;
+  saved_amount: number;
+  deadline?: string | null;
 };
 
 export default function Goals() {
   const [goals, setGoals] = useState<Goal[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [editingGoalId, setEditingGoalId] = useState<string | null>(null);
@@ -22,6 +25,40 @@ export default function Goals() {
   const [selectedGoalId, setSelectedGoalId] = useState("");
   const [contributionAmount, setContributionAmount] = useState("");
 
+  useEffect(() => {
+    fetchGoals();
+  }, []);
+
+  async function fetchGoals() {
+    setLoading(true);
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      console.error("User fetch error:", userError);
+      setGoals([]);
+      setLoading(false);
+      return;
+    }
+
+    const { data, error } = await supabase
+      .from("goals")
+      .select("id, user_id, name, target_amount, saved_amount, deadline")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Fetch goals error:", error);
+    } else {
+      setGoals((data as Goal[]) || []);
+    }
+
+    setLoading(false);
+  }
+
   const resetForm = () => {
     setName("");
     setTargetAmount("");
@@ -30,79 +67,143 @@ export default function Goals() {
     setShowCreateForm(false);
   };
 
-  const handleAddOrUpdateGoal = (e: React.FormEvent) => {
+  const handleAddOrUpdateGoal = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!name.trim() || !targetAmount) return;
 
-    if (editingGoalId) {
-      setGoals((prev) =>
-        prev.map((goal) =>
-          goal.id === editingGoalId
-            ? {
-                ...goal,
-                name: name.trim(),
-                targetAmount: Number(targetAmount),
-                deadline: deadline || undefined,
-              }
-            : goal
-        )
-      );
-    } else {
-      const newGoal: Goal = {
-        id: crypto.randomUUID(),
-        name: name.trim(),
-        targetAmount: Number(targetAmount),
-        savedAmount: 0,
-        deadline: deadline || undefined,
-      };
+    const parsedTargetAmount = Number(targetAmount);
+    if (Number.isNaN(parsedTargetAmount) || parsedTargetAmount <= 0) return;
 
-      setGoals((prev) => [...prev, newGoal]);
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      console.error("User fetch error:", userError);
+      return;
     }
 
+    if (editingGoalId) {
+      const existingGoal = goals.find((goal) => goal.id === editingGoalId);
+      if (!existingGoal) return;
+
+      const { error } = await supabase
+        .from("goals")
+        .update({
+          name: name.trim(),
+          target_amount: parsedTargetAmount,
+          deadline: deadline || null,
+        })
+        .eq("id", editingGoalId)
+        .eq("user_id", user.id);
+
+      if (error) {
+        console.error("Update goal error:", error);
+        return;
+      }
+    } else {
+      const { error } = await supabase.from("goals").insert([
+        {
+          user_id: user.id,
+          name: name.trim(),
+          target_amount: parsedTargetAmount,
+          saved_amount: 0,
+          deadline: deadline || null,
+        },
+      ]);
+
+      if (error) {
+        console.error("Insert goal error:", error);
+        return;
+      }
+    }
+
+    await fetchGoals();
     resetForm();
   };
 
   const handleEditGoal = (goal: Goal) => {
     setName(goal.name);
-    setTargetAmount(String(goal.targetAmount));
+    setTargetAmount(String(goal.target_amount));
     setDeadline(goal.deadline || "");
     setEditingGoalId(goal.id);
     setShowCreateForm(true);
   };
 
-  const handleDeleteGoal = (goalId: string) => {
-    setGoals((prev) => prev.filter((goal) => goal.id !== goalId));
+  const handleDeleteGoal = async (goalId: string) => {
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      console.error("User fetch error:", userError);
+      return;
+    }
+
+    const { error } = await supabase
+      .from("goals")
+      .delete()
+      .eq("id", goalId)
+      .eq("user_id", user.id);
+
+    if (error) {
+      console.error("Delete goal error:", error);
+      return;
+    }
 
     if (selectedGoalId === goalId) setSelectedGoalId("");
     if (editingGoalId === goalId) resetForm();
+
+    await fetchGoals();
   };
 
-  const handleAddContribution = (e: React.FormEvent) => {
+  const handleAddContribution = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!selectedGoalId || !contributionAmount) return;
 
     const amount = Number(contributionAmount);
-    if (amount <= 0) return;
+    if (Number.isNaN(amount) || amount <= 0) return;
 
-    setGoals((prev) =>
-      prev.map((goal) =>
-        goal.id === selectedGoalId
-          ? { ...goal, savedAmount: goal.savedAmount + amount }
-          : goal
-      )
-    );
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      console.error("User fetch error:", userError);
+      return;
+    }
+
+    const selectedGoal = goals.find((goal) => goal.id === selectedGoalId);
+    if (!selectedGoal) return;
+
+    const newSavedAmount = selectedGoal.saved_amount + amount;
+
+    const { error } = await supabase
+      .from("goals")
+      .update({
+        saved_amount: newSavedAmount,
+      })
+      .eq("id", selectedGoalId)
+      .eq("user_id", user.id);
+
+    if (error) {
+      console.error("Add contribution error:", error);
+      return;
+    }
 
     setContributionAmount("");
     setSelectedGoalId("");
+    await fetchGoals();
   };
 
   return (
     <div className="min-h-screen bg-background">
       <main className="max-w-4xl mx-auto px-6 py-10 space-y-8">
-
-        {/* Header */}
         <div className="flex items-center justify-between">
           <Link
             to="/"
@@ -123,11 +224,12 @@ export default function Goals() {
           )}
         </div>
 
-        {/* Contribution Section */}
         <div className="border rounded-lg p-4 space-y-4">
           <h2 className="text-lg font-semibold">Add Contribution</h2>
 
-          {goals.length === 0 ? (
+          {loading ? (
+            <p className="text-sm text-muted-foreground">Loading goals...</p>
+          ) : goals.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No goals yet. Create a goal first.
             </p>
@@ -164,7 +266,6 @@ export default function Goals() {
           )}
         </div>
 
-        {/* Create / Edit Form */}
         {showCreateForm && (
           <div className="border rounded-lg p-4 space-y-4">
             <h2 className="text-lg font-semibold">
@@ -215,19 +316,20 @@ export default function Goals() {
           </div>
         )}
 
-        {/* Goals List */}
         <div className="space-y-4">
           <h2 className="text-lg font-semibold">Your Goals</h2>
 
-          {goals.length === 0 ? (
+          {loading ? (
+            <p className="text-sm text-muted-foreground">Loading goals...</p>
+          ) : goals.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               You have no goals yet.
             </p>
           ) : (
             goals.map((goal) => {
               const percent =
-                goal.targetAmount > 0
-                  ? Math.min((goal.savedAmount / goal.targetAmount) * 100, 100)
+                goal.target_amount > 0
+                  ? Math.min((goal.saved_amount / goal.target_amount) * 100, 100)
                   : 0;
 
               return (
@@ -236,7 +338,7 @@ export default function Goals() {
                     <div>
                       <p className="font-semibold">{goal.name}</p>
                       <p className="text-sm text-muted-foreground">
-                        ${goal.savedAmount.toFixed(2)} / ${goal.targetAmount.toFixed(2)}
+                        ${goal.saved_amount.toFixed(2)} / ${goal.target_amount.toFixed(2)}
                       </p>
                       {goal.deadline && (
                         <p className="text-sm text-muted-foreground">
@@ -262,7 +364,6 @@ export default function Goals() {
                     </div>
                   </div>
 
-                  {/* Progress Bar */}
                   <div>
                     <div className="w-full bg-muted h-2 rounded-full">
                       <div
@@ -279,7 +380,6 @@ export default function Goals() {
             })
           )}
         </div>
-
       </main>
     </div>
   );
