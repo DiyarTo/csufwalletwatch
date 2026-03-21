@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 type Transaction = {
   id: string;
+  user_id: string;
   date: string;
   name: string;
   amount: number;
@@ -47,9 +48,22 @@ export default function TransactionHistory() {
   async function fetchTransactions() {
     setLoading(true);
 
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      console.error("User fetch error:", userError);
+      setTransactions([]);
+      setLoading(false);
+      return;
+    }
+
     const { data, error } = await supabase
       .from("transactions")
-      .select("id, date, name, amount, category, type, source")
+      .select("id, user_id, date, name, amount, category, type, source")
+      .eq("user_id", user.id)
       .order("date", { ascending: false });
 
     if (error) {
@@ -101,6 +115,16 @@ export default function TransactionHistory() {
 
     const signedAmount = formType === "expense" ? -parsedAmount : parsedAmount;
 
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      console.error("User fetch error:", userError);
+      return;
+    }
+
     if (editingId) {
       const existingTransaction = transactions.find((t) => t.id === editingId);
 
@@ -116,7 +140,8 @@ export default function TransactionHistory() {
           type: formType,
         })
         .eq("id", editingId)
-        .eq("source", "manual");
+        .eq("source", "manual")
+        .eq("user_id", user.id);
 
       if (error) {
         console.error("Update error:", error);
@@ -125,6 +150,7 @@ export default function TransactionHistory() {
     } else {
       const { error } = await supabase.from("transactions").insert([
         {
+          user_id: user.id,
           name: formName,
           amount: signedAmount,
           category: formCategory,
@@ -163,11 +189,22 @@ export default function TransactionHistory() {
 
     if (!transactionToRemove || transactionToRemove.source !== "manual") return;
 
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      console.error("User fetch error:", userError);
+      return;
+    }
+
     const { error } = await supabase
       .from("transactions")
       .delete()
       .eq("id", id)
-      .eq("source", "manual");
+      .eq("source", "manual")
+      .eq("user_id", user.id);
 
     if (error) {
       console.error("Delete error:", error);
