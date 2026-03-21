@@ -120,6 +120,8 @@ export default function TransactionHistory() {
       error: userError,
     } = await supabase.auth.getUser();
 
+    console.log("USER FROM SUPABASE:", user);
+
     if (userError || !user) {
       console.error("User fetch error:", userError);
       return;
