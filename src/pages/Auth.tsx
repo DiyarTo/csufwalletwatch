@@ -98,7 +98,7 @@ const Auth = () => {
     <div className="min-h-screen bg-background flex items-center justify-center px-6">
       <div className="w-full max-w-sm">
         <h1 className="font-heading text-3xl font-bold text-foreground text-center mb-8">
-          Wallet Watch
+          Wallet Watch TEST
         </h1>
 
         <div className="bg-card rounded-lg p-6">
@@ -137,15 +137,18 @@ const Auth = () => {
             </Button>
           </form>
 
+          <div className="mt-4 bg-yellow-100 p-2">
+            <button
+              type="button"
+              onClick={handleForgotPassword}
+              className="w-full rounded-md border border-red-500 p-2 text-center text-sm font-semibold text-red-500"
+            >
+              Forgot password?
+            </button>
+          </div>
+
           <button
             type="button"
-            onClick={handleForgotPassword}
-            className="mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-center"
-          >
-            Forgot password?
-          </button>
-          {/* Toggle Login/Signup */}
-          <button
             onClick={() => setIsLogin(!isLogin)}
             className="mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-center"
           >
