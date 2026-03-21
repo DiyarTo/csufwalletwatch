@@ -34,7 +34,7 @@ export default function GoalsPreview() {
     <div className="border rounded-lg p-4 space-y-3">
       <div className="flex justify-between items-center">
         <h2 className="text-sm font-medium text-muted-foreground">
-          Savings Goal
+          Goals
         </h2>
 
         <Link
