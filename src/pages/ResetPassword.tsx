@@ -11,24 +11,34 @@ const ResetPassword = () => {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [ready, setReady] = useState(false);
+  const [checking, setChecking] = useState(true);
 
   const { toast } = useToast();
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Listen for the PASSWORD_RECOVERY event
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "PASSWORD_RECOVERY") {
         setReady(true);
+        setChecking(false);
       }
     });
 
-    // Also check if we already have a session (user clicked the link)
+    // Check existing session as fallback (user may have already been authed by the recovery link)
     supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) setReady(true);
+      if (session) {
+        setReady(true);
+      }
+      setChecking(false);
     });
 
-    return () => subscription.unsubscribe();
+    // Timeout so user never gets stuck
+    const timeout = setTimeout(() => setChecking(false), 5000);
+
+    return () => {
+      subscription.unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
   const handleReset = async (e: React.FormEvent) => {
@@ -44,32 +54,37 @@ const ResetPassword = () => {
     }
 
     setLoading(true);
-
     const { error } = await supabase.auth.updateUser({ password });
 
     if (error) {
-      toast({
-        title: "Reset failed",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Reset failed", description: error.message, variant: "destructive" });
     } else {
-      toast({
-        title: "Password updated",
-        description: "Your password has been reset successfully.",
-      });
-      navigate("/");
+      toast({ title: "Password updated", description: "Your password has been reset successfully." });
+      navigate("/auth");
     }
-
     setLoading(false);
   };
+
+  if (checking) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-6">
+        <div className="w-full max-w-sm text-center">
+          <h1 className="font-heading text-3xl font-bold text-foreground mb-4">Wallet Watch</h1>
+          <p className="text-muted-foreground">Verifying your reset link…</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!ready) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center px-6">
         <div className="w-full max-w-sm text-center">
           <h1 className="font-heading text-3xl font-bold text-foreground mb-4">Wallet Watch</h1>
-          <p className="text-muted-foreground">Verifying your reset link…</p>
+          <p className="text-muted-foreground mb-4">This reset link is invalid or has expired.</p>
+          <Button variant="outline" onClick={() => navigate("/auth")}>
+            Back to login
+          </Button>
         </div>
       </div>
     );
@@ -118,6 +133,14 @@ const ResetPassword = () => {
               {loading ? "Updating…" : "Update Password"}
             </Button>
           </form>
+
+          <button
+            type="button"
+            onClick={() => navigate("/auth")}
+            className="mt-4 text-sm text-muted-foreground hover:text-foreground transition-colors w-full text-center"
+          >
+            Back to login
+          </button>
         </div>
       </div>
     </div>
