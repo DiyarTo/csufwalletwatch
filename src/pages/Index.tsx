@@ -78,7 +78,7 @@ const Index = () => {
 
         <footer className="text-center py-8">
           <p className="text-xs text-muted-foreground">
-            March 2026 · All figures are current as of today.
+All figures are current as of today.
           </p>
         </footer>
       </main>
