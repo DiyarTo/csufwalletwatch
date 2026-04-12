@@ -1,18 +1,36 @@
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 import { Link } from "react-router-dom";
 
 export default function GoalsPreview() {
-  // temporary mock data (later you'll connect real state)
-  const goals = [
-    {
-      id: "1",
-      name: "Emergency Fund",
-      saved: 1200,
-      target: 5000,
-    },
-  ];
+ const { user } = useAuth();
+  const [goal, setGoal] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  const goal = goals[0]; // just show first goal for now
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from("goals")
+      .select("id, name, target_amount, saved_amount")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .then(({ data }) => {
+        if (data && data.length > 0) {
+          setGoal({
+            id: data[0].id,
+            name: data[0].name,
+            saved: data[0].saved_amount,
+            target: data[0].target_amount,
+          });
+        }
+        setLoading(false);
+      });
+  }, [user]);
 
+  if (loading) return <div className="border rounded-lg p-4"><p className="text-sm text-muted-foreground">Loading...</p></div>;
+  
   if (!goal) {
     return (
       <div className="border rounded-lg p-4">
