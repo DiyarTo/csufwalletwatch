@@ -1,7 +1,41 @@
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+
 const MonthlyPace = () => {
-  const income = 5200;
-  const spending = 3140;
-  const ratio = Math.min(spending / income, 1);
+  const { user } = useAuth();
+  const [income, setIncome] = useState(0);
+  const [spending, setSpending] = useState(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const now = new Date();
+    const startOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+    const endOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()}`;
+
+    supabase
+      .from("transactions")
+      .select("amount")
+      .eq("user_id", user.id)
+      .gte("date", startOfMonth)
+      .lte("date", endOfMonth)
+      .then(({ data }) => {
+        let inc = 0;
+        let spend = 0;
+        (data || []).forEach((tx) => {
+          if (tx.amount > 0) inc += Number(tx.amount);
+          else spend += Math.abs(Number(tx.amount));
+        });
+        setIncome(inc);
+        setSpending(spend);
+        setLoading(false);
+      });
+  }, [user]);
+    if (loading) return <section className="bg-card rounded-lg p-6"><p className="text-sm text-muted-foreground">Loading...</p></section>;
+
+const ratio = income > 0 ? Math.min(spending / income, 1) : 0;
   const remaining = income - spending;
 
   return (
