@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -40,9 +41,14 @@ const ratio = income > 0 ? Math.min(spending / income, 1) : 0;
 
   return (
     <section className="bg-card rounded-lg p-6">
-      <p className="text-sm font-body text-muted-foreground tracking-wide uppercase mb-4">
-        This Month's Pace
-      </p>
+      <div className="flex justify-between items-center mb-4">
+        <p className="text-sm font-body text-muted-foreground tracking-wide uppercase">
+          This Month's Pace
+        </p>
+        <Link to="/budget" className="text-sm text-primary hover:underline">
+          View →
+        </Link>
+      </div>
 
       <div className="flex justify-between items-baseline mb-3">
         <span className="text-sm text-muted-foreground">Spent</span>
