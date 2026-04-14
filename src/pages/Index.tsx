@@ -9,15 +9,12 @@ import PlaidLink from "@/components/PlaidLink";
 import { LogOut } from "lucide-react";
 import { Link } from "react-router-dom";
 import GoalsPreview from "@/components/GoalsPreview";
-
 const Index = () => {
   const { user, loading, signOut } = useAuth();
   const navigate = useNavigate();
-
   useEffect(() => {
     if (!loading && !user) navigate("/auth");
   }, [user, loading, navigate]);
-
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -25,9 +22,7 @@ const Index = () => {
       </div>
     );
   }
-
   if (!user) return null;
-
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b border-border">
@@ -42,6 +37,8 @@ const Index = () => {
             </Link>
           
             <PlaidLink />
+
+            <span className="text-sm text-muted-foreground">{user.email}</span>
           
             <button
               onClick={signOut}
@@ -52,20 +49,16 @@ const Index = () => {
           </div>
         </div>
       </header>
-
       <main className="max-w-4xl mx-auto px-6 py-10 space-y-8">
         <NetPosition />
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <MonthlyPace />
           <GoalsPreview />
         </div>
-
         <div className="flex justify-between items-center">
           <h2 className="text-sm font-medium text-muted-foreground">
             Recent Transactions
           </h2>
-
         <Link
           to="/transactions"
           className="text-sm text-primary hover:underline"
@@ -73,9 +66,7 @@ const Index = () => {
           View All →
         </Link>
       </div>
-
       <RecentTransactions />
-
         <footer className="text-center py-8">
           <p className="text-xs text-muted-foreground">
 All figures are current as of today.
@@ -85,5 +76,4 @@ All figures are current as of today.
     </div>
   );
 };
-
 export default Index;
