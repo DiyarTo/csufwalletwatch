@@ -37,7 +37,6 @@ const Index = () => {
             </Link>
           
             <PlaidLink />
-
             <span className="text-sm text-muted-foreground">{user.email}</span>
           
             <button
@@ -54,6 +53,7 @@ const Index = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <MonthlyPace />
           <GoalsPreview />
+          <UpcomingBills />
         </div>
         <div className="flex justify-between items-center">
           <h2 className="text-sm font-medium text-muted-foreground">
