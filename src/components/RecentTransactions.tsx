@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
 import { format } from "date-fns";
-
 type Transaction = {
   id: string;
   name: string;
@@ -10,57 +9,40 @@ type Transaction = {
   amount: number;
   date: string;
 };
-
 const PAGE_SIZE = 7;
-
 const RecentTransactions = () => {
   const { user } = useAuth();
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [page, setPage] = useState(0);
   const [totalCount, setTotalCount] = useState(0);
-
   useEffect(() => {
     if (!user) return;
-
     const fetchTransactions = async () => {
       const from = page * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
-
       const { data, count } = await supabase
         .from("transactions")
         .select("id, name, category, amount, date", { count: "exact" })
         .eq("user_id", user.id)
         .order("date", { ascending: false })
         .range(from, to);
-
       if (data) setTransactions(data);
       if (count !== null) setTotalCount(count);
     };
-
     fetchTransactions();
   }, [user, page]);
-
   const totalPages = Math.ceil(totalCount / PAGE_SIZE);
-
   if (transactions.length === 0 && page === 0) {
     return (
       <section className="bg-card rounded-lg p-6">
-        <p className="text-sm font-body text-muted-foreground tracking-wide uppercase mb-4">
-          Recent Transactions
-        </p>
         <p className="text-sm text-muted-foreground py-4 text-center">
           No transactions yet. Link a bank account to get started!
         </p>
       </section>
     );
   }
-
   return (
     <section className="bg-card rounded-lg p-6">
-      <p className="text-sm font-body text-muted-foreground tracking-wide uppercase mb-4">
-        Recent Transactions
-      </p>
-
       <ul className="divide-y divide-border">
         {transactions.map((tx) => (
           <li key={tx.id} className="flex items-center justify-between py-3">
@@ -76,7 +58,6 @@ const RecentTransactions = () => {
           </li>
         ))}
       </ul>
-
       {totalPages > 1 && (
         <div className="flex items-center justify-between mt-4 pt-4 border-t border-border">
           <button
@@ -101,5 +82,4 @@ const RecentTransactions = () => {
     </section>
   );
 };
-
 export default RecentTransactions;
