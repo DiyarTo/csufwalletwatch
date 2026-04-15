@@ -61,9 +61,17 @@ const Budget = () => {
   const [categories, setCategories] = useState<CategorySpending[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // New budget creation state
-  const [budgetCategories, setBudgetCategories] = useState<BudgetCategory[]>(defaultBudgetCategories);
+  // Saved budget shown by default
+  const [savedBudgetCategories, setSavedBudgetCategories] =
+    useState<BudgetCategory[]>([]);
+
+  // Draft budget used while editing
+  const [draftBudgetCategories, setDraftBudgetCategories] =
+    useState<BudgetCategory[]>([]);
+
   const [customInputs, setCustomInputs] = useState<Record<number, string>>({});
+  const [hasBudget, setHasBudget] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !user) navigate("/auth");
@@ -73,8 +81,12 @@ const Budget = () => {
     if (!user) return;
 
     const now = new Date();
-    const startOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
-    const endOfMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${new Date(
+    const startOfMonth = `${now.getFullYear()}-${String(
+      now.getMonth() + 1
+    ).padStart(2, "0")}-01`;
+    const endOfMonth = `${now.getFullYear()}-${String(
+      now.getMonth() + 1
+    ).padStart(2, "0")}-${new Date(
       now.getFullYear(),
       now.getMonth() + 1,
       0
@@ -109,15 +121,36 @@ const Budget = () => {
             .map(([category, amount]) => ({ category, amount }))
             .sort((a, b) => b.amount - a.amount)
         );
-        setLoading(false);
       });
+
+    // Barebones local example:
+    // pretend we loaded a saved budget
+    const fakeSavedBudget = localStorage.getItem("budgetData");
+
+    if (fakeSavedBudget) {
+      const parsedBudget: BudgetCategory[] = JSON.parse(fakeSavedBudget);
+      setSavedBudgetCategories(parsedBudget);
+      setDraftBudgetCategories(parsedBudget);
+      setHasBudget(true);
+      setIsEditing(false);
+    } else {
+      setSavedBudgetCategories(defaultBudgetCategories);
+      setDraftBudgetCategories(defaultBudgetCategories);
+      setHasBudget(false);
+      setIsEditing(true);
+    }
+
+    setLoading(false);
   }, [user]);
 
   if (authLoading || !user) return null;
 
   const remaining = income - spending;
   const ratio = income > 0 ? Math.min(spending / income, 1) : 0;
-  const monthName = new Date().toLocaleString("default", { month: "long", year: "numeric" });
+  const monthName = new Date().toLocaleString("default", {
+    month: "long",
+    year: "numeric",
+  });
 
   const updateSubcategoryAmount = (
     categoryId: number,
@@ -126,7 +159,7 @@ const Budget = () => {
   ) => {
     const numericValue = Number(value) || 0;
 
-    setBudgetCategories((prev) =>
+    setDraftBudgetCategories((prev) =>
       prev.map((category) =>
         category.id === categoryId
           ? {
@@ -151,7 +184,7 @@ const Budget = () => {
     const inputValue = customInputs[categoryId]?.trim();
     if (!inputValue) return;
 
-    setBudgetCategories((prev) =>
+    setDraftBudgetCategories((prev) =>
       prev.map((category) =>
         category.id === categoryId
           ? {
@@ -176,7 +209,26 @@ const Budget = () => {
     }));
   };
 
-  const totalBudget = budgetCategories.reduce((sum, category) => {
+  const startEditing = () => {
+    setDraftBudgetCategories(JSON.parse(JSON.stringify(savedBudgetCategories)));
+    setIsEditing(true);
+  };
+
+  const cancelEditing = () => {
+    setDraftBudgetCategories(JSON.parse(JSON.stringify(savedBudgetCategories)));
+    setIsEditing(false);
+  };
+
+  const confirmBudget = () => {
+    setSavedBudgetCategories(JSON.parse(JSON.stringify(draftBudgetCategories)));
+    localStorage.setItem("budgetData", JSON.stringify(draftBudgetCategories));
+    setHasBudget(true);
+    setIsEditing(false);
+  };
+
+  const activeBudget = isEditing ? draftBudgetCategories : savedBudgetCategories;
+
+  const totalBudget = activeBudget.reduce((sum, category) => {
     return (
       sum +
       category.subcategories.reduce((subSum, sub) => subSum + sub.amount, 0)
@@ -194,17 +246,16 @@ const Budget = () => {
             <ArrowLeft className="w-4 h-4 text-muted-foreground" />
           </Link>
           <h1 className="font-heading text-lg tracking-tight text-foreground">
-            Budget — {monthName}
+            Budget - {monthName}
           </h1>
         </div>
       </header>
 
       <main className="max-w-4xl mx-auto px-6 py-10 space-y-8">
         {loading ? (
-          <p className="text-sm text-muted-foreground">Loading…</p>
+          <p className="text-sm text-muted-foreground">Loading...</p>
         ) : (
           <>
-            {/* Summary cards */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="bg-card rounded-lg p-6">
                 <p className="text-sm text-muted-foreground mb-1">Income</p>
@@ -230,7 +281,6 @@ const Budget = () => {
               </div>
             </div>
 
-            {/* Progress bar */}
             <div className="bg-card rounded-lg p-6">
               <div className="flex justify-between items-baseline mb-3">
                 <span className="text-sm text-muted-foreground">
@@ -247,13 +297,14 @@ const Budget = () => {
               </div>
             </div>
 
-            {/* Spending by category */}
             <div className="bg-card rounded-lg p-6">
               <p className="text-sm font-body text-muted-foreground tracking-wide uppercase mb-4">
                 Spending by Category
               </p>
               {categories.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No spending this month.</p>
+                <p className="text-sm text-muted-foreground">
+                  No spending this month.
+                </p>
               ) : (
                 <div className="space-y-4">
                   {categories.map((cat) => {
@@ -261,7 +312,9 @@ const Budget = () => {
                     return (
                       <div key={cat.category}>
                         <div className="flex justify-between items-baseline mb-1">
-                          <span className="text-sm text-foreground">{cat.category}</span>
+                          <span className="text-sm text-foreground">
+                            {cat.category}
+                          </span>
                           <span className="text-sm text-muted-foreground">
                             ${cat.amount.toLocaleString()}
                           </span>
@@ -279,25 +332,39 @@ const Budget = () => {
               )}
             </div>
 
-            {/* Budget creation */}
             <div className="bg-card rounded-lg p-6 space-y-6">
               <div className="flex items-center justify-between">
                 <p className="text-sm font-body text-muted-foreground tracking-wide uppercase">
-                  Create Budget
+                  {hasBudget ? "View Budget" : "Create Budget"}
                 </p>
                 <p className="text-sm text-foreground font-medium">
                   Total Budgeted: ${totalBudget.toLocaleString()}
                 </p>
               </div>
 
-              {budgetCategories.map((category) => {
+              {hasBudget && !isEditing && (
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={startEditing}
+                    className="rounded-md bg-foreground text-background px-4 py-2 text-sm hover:opacity-90"
+                  >
+                    Edit Budget
+                  </button>
+                </div>
+              )}
+
+              {activeBudget.map((category) => {
                 const categoryTotal = category.subcategories.reduce(
                   (sum, sub) => sum + sub.amount,
                   0
                 );
 
                 return (
-                  <div key={category.id} className="border border-border rounded-lg p-4 space-y-4">
+                  <div
+                    key={category.id}
+                    className="border border-border rounded-lg p-4 space-y-4"
+                  >
                     <div className="flex justify-between items-center">
                       <h2 className="text-base font-semibold text-foreground">
                         {category.name}
@@ -316,39 +383,75 @@ const Budget = () => {
                           <label className="text-sm text-foreground min-w-[140px]">
                             {sub.name}
                           </label>
-                          <input
-                            type="number"
-                            min="0"
-                            value={sub.amount}
-                            onChange={(e) =>
-                              updateSubcategoryAmount(category.id, sub.id, e.target.value)
-                            }
-                            className="w-full sm:w-40 rounded-md border border-border bg-background px-3 py-2 text-sm"
-                            placeholder="0"
-                          />
+
+                          {isEditing ? (
+                            <input
+                              type="number"
+                              min="0"
+                              value={sub.amount}
+                              onChange={(e) =>
+                                updateSubcategoryAmount(
+                                  category.id,
+                                  sub.id,
+                                  e.target.value
+                                )
+                              }
+                              className="w-full sm:w-40 rounded-md border border-border bg-background px-3 py-2 text-sm"
+                              placeholder="0"
+                            />
+                          ) : (
+                            <div className="text-sm text-muted-foreground">
+                              ${sub.amount.toLocaleString()}
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
 
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <input
-                        type="text"
-                        value={customInputs[category.id] || ""}
-                        onChange={(e) => updateCustomInput(category.id, e.target.value)}
-                        placeholder={`Add custom ${category.name.toLowerCase()} item`}
-                        className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => addCustomSubcategory(category.id)}
-                        className="rounded-md bg-foreground text-background px-4 py-2 text-sm hover:opacity-90"
-                      >
-                        Add Custom
-                      </button>
-                    </div>
+                    {isEditing && (
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <input
+                          type="text"
+                          value={customInputs[category.id] || ""}
+                          onChange={(e) =>
+                            updateCustomInput(category.id, e.target.value)
+                          }
+                          placeholder={`Add custom ${category.name.toLowerCase()} item`}
+                          className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => addCustomSubcategory(category.id)}
+                          className="rounded-md bg-muted px-4 py-2 text-sm hover:opacity-90"
+                        >
+                          Add Custom
+                        </button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
+
+              {isEditing && (
+                <div className="flex gap-3 justify-end">
+                  {hasBudget && (
+                    <button
+                      type="button"
+                      onClick={cancelEditing}
+                      className="rounded-md border border-border px-4 py-2 text-sm"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={confirmBudget}
+                    className="rounded-md bg-foreground text-background px-4 py-2 text-sm hover:opacity-90"
+                  >
+                    Confirm
+                  </button>
+                </div>
+              )}
             </div>
           </>
         )}
