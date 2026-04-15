@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
+import { TRANSACTION_CATEGORIES } from "@/lib/categories";
+
 type Transaction = {
   id: string;
   user_id: string;
@@ -11,17 +13,6 @@ type Transaction = {
   category: string | null;
   is_manual: boolean | null;
 };
-
-const categoryOptions = [
-  "Income",
-  "Food",
-  "Transportation",
-  "Shopping",
-  "Entertainment",
-  "Bills",
-  "Health",
-  "Other",
-];
 
 export default function TransactionHistory() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
