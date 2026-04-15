@@ -300,7 +300,7 @@ export default function TransactionHistory() {
               className="border rounded-md px-3 py-2"
             >
               <option value="">Select Category</option>
-              {categoryOptions.map((category) => (
+              {TRANSACTION_CATEGORIES.map((category) => (
                 <option key={category} value={category}>
                   {category}
                 </option>
