@@ -35,6 +35,12 @@ const Index = () => {
             >
               Goals
             </Link>
+            <Link
+              to="/insights"
+              className="text-sm text-primary hover:underline"
+            >
+              Insights
+            </Link>
           
             <PlaidLink />
             <span className="text-sm text-muted-foreground">{user.email}</span>

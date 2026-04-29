@@ -11,6 +11,7 @@ import ResetPassword from "./pages/ResetPassword.tsx";
 import TransactionHistory from "./pages/TransactionHistory";
 import Goals from "./pages/Goals";
 import Budget from "./pages/Budget";
+import Insights from "./pages/insights";
 
 const queryClient = new QueryClient();
 
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/transactions" element={<TransactionHistory />} />
             <Route path="/goals" element={<Goals />} />
             <Route path="/budget" element={<Budget />} />
+            <Route path="/insights" element={<Insights />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
