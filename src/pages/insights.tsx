@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 
-interface BudgetSubcategory {
+interface BudgetSubcategory { 
   id: number;
   name: string;
   amount: number;
