@@ -62,6 +62,7 @@ const Index = () => {
           <GoalsPreview />
         </div>
         <UpcomingBills />
+        <NetWorthChart />
         <div className="flex justify-between items-center">
           <h2 className="text-sm font-medium text-muted-foreground">
             Recent Transactions
