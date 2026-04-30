@@ -1,16 +1,13 @@
-// src/pages/Insights.tsx
-
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 import { ArrowLeft } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 
 interface BudgetSubcategory {
   id: number;
   name: string;
   amount: number;
-  isCustom?: boolean;
 }
 
 interface BudgetCategory {
@@ -28,7 +25,8 @@ export default function Insights() {
   const { user } = useAuth();
 
   const [budgetCategories, setBudgetCategories] = useState<BudgetCategory[]>([]);
-  const [spending, setSpending] = useState(0);
+  const [monthlySpending, setMonthlySpending] = useState(0);
+  const [monthlySavings, setMonthlySavings] = useState(0);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -40,7 +38,6 @@ export default function Insights() {
     setLoading(true);
 
     const savedBudget = localStorage.getItem("budgetData");
-
     if (savedBudget) {
       setBudgetCategories(JSON.parse(savedBudget));
     }
@@ -62,18 +59,34 @@ export default function Insights() {
     const { data } = await supabase
       .from("transactions")
       .select("amount, category")
-      .eq("user_id", user?.id)
+      .eq("user_id", user.id)
       .gte("date", startOfMonth)
       .lte("date", endOfMonth);
 
-    const monthlySpending = ((data as Transaction[]) || []).reduce(
-      (sum, tx) => {
-        return tx.amount < 0 ? sum + Math.abs(Number(tx.amount)) : sum;
-      },
-      0
-    );
+    let spending = 0;
+    let savings = 0;
 
-    setSpending(monthlySpending);
+    ((data as Transaction[]) || []).forEach((tx) => {
+      const amount = Number(tx.amount);
+      const category = tx.category || "";
+
+      if (amount < 0) {
+        const positiveAmount = Math.abs(amount);
+
+        if (
+          category === "Emergency Fund" ||
+          category === "Investments" ||
+          category === "Savings / Investing"
+        ) {
+          savings += positiveAmount;
+        } else {
+          spending += positiveAmount;
+        }
+      }
+    });
+
+    setMonthlySpending(spending);
+    setMonthlySavings(savings);
     setLoading(false);
   }
 
@@ -85,27 +98,30 @@ export default function Insights() {
     return Math.max(daysLeft / 7, 1);
   }
 
-  const totalBudgeted = budgetCategories.reduce((sum, category) => {
+  const savingsCategory = budgetCategories.find(
+    (category) => category.name === "Savings / Investing"
+  );
+
+  const monthlySavingsBudget = savingsCategory
+    ? savingsCategory.subcategories.reduce((sum, sub) => sum + sub.amount, 0)
+    : 0;
+
+  const monthlyTotalBudget = budgetCategories.reduce((sum, category) => {
     return (
       sum +
       category.subcategories.reduce((subSum, sub) => subSum + sub.amount, 0)
     );
   }, 0);
 
-  const savingsCategory = budgetCategories.find(
-    (category) => category.name === "Savings / Investing"
-  );
+  const monthlySpendingBudget = monthlyTotalBudget - monthlySavingsBudget;
 
-  const savingsGoal = savingsCategory
-    ? savingsCategory.subcategories.reduce((sum, sub) => sum + sub.amount, 0)
-    : 0;
-
-  const spendingBudget = totalBudgeted - savingsGoal;
-  const remainingToSpend = spendingBudget - spending;
   const weeksLeft = getWeeksLeftInMonth();
 
-  const weeklySpendLimit = remainingToSpend / weeksLeft;
-  const weeklySavingsNeeded = savingsGoal / weeksLeft;
+  const leftToSpend = monthlySpendingBudget - monthlySpending;
+  const leftToSave = monthlySavingsBudget - monthlySavings;
+
+  const weeklySpendLimit = leftToSpend / weeksLeft;
+  const weeklySavingsNeeded = leftToSave / weeksLeft;
 
   return (
     <div className="min-h-screen bg-background">
@@ -129,22 +145,48 @@ export default function Insights() {
           <p className="text-sm text-muted-foreground">Loading insights...</p>
         ) : (
           <>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="bg-card rounded-lg p-6 space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  Weekly Spending Limit
+                </p>
+                <p className="font-heading text-3xl text-foreground">
+                  ${weeklySpendLimit.toFixed(2)}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  You can spend this much per week and stay within budget.
+                </p>
+              </div>
+
+              <div className="bg-card rounded-lg p-6 space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  Weekly Savings Needed
+                </p>
+                <p className="font-heading text-3xl text-foreground">
+                  ${weeklySavingsNeeded.toFixed(2)}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Save or invest this much per week to hit your monthly plan.
+                </p>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="bg-card rounded-lg p-6">
                 <p className="text-sm text-muted-foreground mb-1">
-                  Monthly Spending Budget
+                  Spending Budget
                 </p>
-                <p className="font-heading text-2xl text-foreground">
-                  ${spendingBudget.toLocaleString()}
+                <p className="font-heading text-2xl">
+                  ${monthlySpendingBudget.toLocaleString()}
                 </p>
               </div>
 
               <div className="bg-card rounded-lg p-6">
                 <p className="text-sm text-muted-foreground mb-1">
-                  Spent This Month
+                  Spent So Far
                 </p>
-                <p className="font-heading text-2xl text-foreground">
-                  ${spending.toLocaleString()}
+                <p className="font-heading text-2xl">
+                  ${monthlySpending.toLocaleString()}
                 </p>
               </div>
 
@@ -152,39 +194,39 @@ export default function Insights() {
                 <p className="text-sm text-muted-foreground mb-1">
                   Left to Spend
                 </p>
-                <p className="font-heading text-2xl text-foreground">
-                  ${remainingToSpend.toLocaleString()}
+                <p className="font-heading text-2xl">
+                  ${leftToSpend.toLocaleString()}
                 </p>
               </div>
             </div>
 
-            <div className="bg-card rounded-lg p-6 space-y-2">
-              <p className="text-sm font-body text-muted-foreground tracking-wide uppercase">
-                Weekly Spending Pace
-              </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="bg-card rounded-lg p-6">
+                <p className="text-sm text-muted-foreground mb-1">
+                  Savings Target
+                </p>
+                <p className="font-heading text-2xl">
+                  ${monthlySavingsBudget.toLocaleString()}
+                </p>
+              </div>
 
-              <p className="font-heading text-3xl text-foreground">
-                ${weeklySpendLimit.toFixed(2)} / week
-              </p>
+              <div className="bg-card rounded-lg p-6">
+                <p className="text-sm text-muted-foreground mb-1">
+                  Saved / Invested
+                </p>
+                <p className="font-heading text-2xl">
+                  ${monthlySavings.toLocaleString()}
+                </p>
+              </div>
 
-              <p className="text-sm text-muted-foreground">
-                This is how much you can spend per week for the rest of the
-                month and stay within your planned spending budget.
-              </p>
-            </div>
-
-            <div className="bg-card rounded-lg p-6 space-y-2">
-              <p className="text-sm font-body text-muted-foreground tracking-wide uppercase">
-                Savings / Investing Pace
-              </p>
-
-              <p className="font-heading text-3xl text-foreground">
-                ${weeklySavingsNeeded.toFixed(2)} / week
-              </p>
-
-              <p className="text-sm text-muted-foreground">
-                This is based on your Savings / Investing budget category.
-              </p>
+              <div className="bg-card rounded-lg p-6">
+                <p className="text-sm text-muted-foreground mb-1">
+                  Left to Save
+                </p>
+                <p className="font-heading text-2xl">
+                  ${leftToSave.toLocaleString()}
+                </p>
+              </div>
             </div>
           </>
         )}
