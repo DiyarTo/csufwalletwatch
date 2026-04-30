@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import NetWorthChart from "@/components/NetWorthChart";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import NetPosition from "@/components/NetPosition";
