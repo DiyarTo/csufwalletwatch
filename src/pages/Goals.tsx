@@ -115,7 +115,7 @@ export default function Goals() {
           deadline
         )
       `)
-      .eq("invitee_email", user.email.toLowerCase())
+      .eq("invitee_email", user.email.trim().toLowerCase())
       .eq("status", "pending");
   
     if (error) {
@@ -128,6 +128,7 @@ export default function Goals() {
     }
   
     setPendingInvites(data || []);
+    console.log("pending invites data:", data);
   }
 
   const resetForm = () => {
