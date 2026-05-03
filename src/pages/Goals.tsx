@@ -14,6 +14,7 @@ type Goal = {
 }; 
 
 export default function Goals() {
+  console.log("GOALS PAGE LOADED");
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
