@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 
 type Goal = {
   id: string;
@@ -9,9 +11,13 @@ type Goal = {
   target_amount: number;
   saved_amount: number;
   deadline?: string | null;
-};
+}; 
 
 export default function Goals() {
+  const { user, loading: authLoading } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
   const [goals, setGoals] = useState<Goal[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -24,39 +30,104 @@ export default function Goals() {
 
   const [selectedGoalId, setSelectedGoalId] = useState("");
   const [contributionAmount, setContributionAmount] = useState("");
+  const [contributing, setContributing] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const [inviteEmail, setInviteEmail] = useState("");
+  const [invitingGoalId, setInvitingGoalId] = useState<string | null>(null);
+  const [sendingInvite, setSendingInvite] = useState(false);
+  const [pendingInvites, setPendingInvites] = useState<any[]>([]);
 
   useEffect(() => {
-    fetchGoals();
-  }, []);
+    if (!authLoading && !user) navigate("/auth");
+  }, [user, authLoading, navigate]);
+
+  useEffect(() => {
+    if (user) {
+      fetchGoals();
+      fetchPendingInvites();
+    }
+  }, [user]);
 
   async function fetchGoals() {
+    if (!user) return;
+  
     setLoading(true);
-
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      console.error("User fetch error:", userError);
+  
+    const { data: memberships, error: membershipError } = await supabase
+      .from("goal_members")
+      .select("goal_id")
+      .eq("user_id", user.id);
+  
+    if (membershipError) {
+      toast({
+        title: "Error loading goal memberships",
+        description: membershipError.message,
+        variant: "destructive",
+      });
+      setLoading(false);
+      return;
+    }
+  
+    const goalIds = memberships?.map((m) => m.goal_id) || [];
+  
+    if (goalIds.length === 0) {
       setGoals([]);
       setLoading(false);
       return;
     }
-
+  
     const { data, error } = await supabase
       .from("goals")
       .select("id, user_id, name, target_amount, saved_amount, deadline")
-      .eq("user_id", user.id)
+      .in("id", goalIds)
       .order("created_at", { ascending: false });
-
+  
     if (error) {
-      console.error("Fetch goals error:", error);
+      toast({
+        title: "Error loading goals",
+        description: error.message,
+        variant: "destructive",
+      });
     } else {
       setGoals((data as Goal[]) || []);
     }
-
+  
     setLoading(false);
+  }
+
+  async function fetchPendingInvites() {
+    if (!user?.email) return;
+  
+    const { data, error } = await supabase
+      .from("goal_invites")
+      .select(`
+        id,
+        goal_id,
+        inviter_id,
+        invitee_email,
+        status,
+        goals (
+          id,
+          name,
+          target_amount,
+          saved_amount,
+          deadline
+        )
+      `)
+      .eq("invitee_email", user.email.toLowerCase())
+      .eq("status", "pending");
+  
+    if (error) {
+      toast({
+        title: "Error loading invites",
+        description: error.message,
+        variant: "destructive",
+      });
+      return;
+    }
+  
+    setPendingInvites(data || []);
   }
 
   const resetForm = () => {
@@ -69,57 +140,49 @@ export default function Goals() {
 
   const handleAddOrUpdateGoal = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!name.trim() || !targetAmount) return;
+    if (!user || !name.trim() || !targetAmount) return;
 
     const parsedTargetAmount = Number(targetAmount);
     if (Number.isNaN(parsedTargetAmount) || parsedTargetAmount <= 0) return;
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      console.error("User fetch error:", userError);
-      return;
-    }
+    setSubmitting(true);
 
     if (editingGoalId) {
-      const existingGoal = goals.find((goal) => goal.id === editingGoalId);
-      if (!existingGoal) return;
-
       const { error } = await supabase
         .from("goals")
-        .update({
-          name: name.trim(),
-          target_amount: parsedTargetAmount,
-          deadline: deadline || null,
-        })
+        .update({ name: name.trim(), target_amount: parsedTargetAmount, deadline: deadline || null })
         .eq("id", editingGoalId)
         .eq("user_id", user.id);
 
       if (error) {
-        console.error("Update goal error:", error);
+        toast({ title: "Error updating goal", description: error.message, variant: "destructive" });
+        setSubmitting(false);
         return;
       }
+      toast({ title: "Goal updated" });
     } else {
-      const { error } = await supabase.from("goals").insert([
-        {
-          user_id: user.id,
-          name: name.trim(),
-          target_amount: parsedTargetAmount,
-          saved_amount: 0,
-          deadline: deadline || null,
-        },
-      ]);
+      const { error } = await supabase
+  .from("goals")
+  .insert([{
+    user_id: user.id,
+    name: name.trim(),
+    target_amount: parsedTargetAmount,
+    saved_amount: 0,
+    deadline: deadline || null,
+  }])
+  .select()
+  .single();
 
-      if (error) {
-        console.error("Insert goal error:", error);
-        return;
-      }
+if (error) {
+  toast({ title: "Error creating goal", description: error.message, variant: "destructive" });
+  setSubmitting(false);
+  return;
+}
+
+toast({ title: "Goal created" });
     }
 
+    setSubmitting(false);
     await fetchGoals();
     resetForm();
   };
@@ -132,254 +195,396 @@ export default function Goals() {
     setShowCreateForm(true);
   };
 
+const handleInviteUser = async (goalId: string) => {
+  if (!user || !inviteEmail.trim()) return;
+
+  setSendingInvite(true);
+
+  const { error } = await supabase.from("goal_invites").insert({
+    goal_id: goalId,
+    inviter_id: user.id,
+    invitee_email: inviteEmail.trim().toLowerCase(),
+    status: "pending",
+  });
+
+  if (error) {
+    toast({
+      title: "Error sending invite",
+      description: error.message,
+      variant: "destructive",
+    });
+    setSendingInvite(false);
+    return;
+  }
+
+  toast({ title: "Invite sent" });
+  setInviteEmail("");
+  setInvitingGoalId(null);
+  setSendingInvite(false);
+};
+
+  const handleAcceptInvite = async (invite: any) => {
+  if (!user) return;
+
+  const { error: memberError } = await supabase.from("goal_members").insert({
+    goal_id: invite.goal_id,
+    user_id: user.id,
+    role: "member",
+  });
+
+  if (memberError) {
+    toast({
+      title: "Error accepting invite",
+      description: memberError.message,
+      variant: "destructive",
+    });
+    return;
+  }
+
+  const { error: inviteError } = await supabase
+    .from("goal_invites")
+    .update({ status: "accepted" })
+    .eq("id", invite.id);
+
+  if (inviteError) {
+    toast({
+      title: "Joined goal, but invite status failed",
+      description: inviteError.message,
+      variant: "destructive",
+    });
+    return;
+  }
+
+  toast({ title: "Invite accepted" });
+
+  await fetchPendingInvites();
+  await fetchGoals();
+};
+  
   const handleDeleteGoal = async (goalId: string) => {
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      console.error("User fetch error:", userError);
-      return;
-    }
-
-    const { error } = await supabase
-      .from("goals")
-      .delete()
-      .eq("id", goalId)
-      .eq("user_id", user.id);
-
+    if (!user) return;
+    const { error } = await supabase.from("goals").delete().eq("id", goalId).eq("user_id", user.id);
     if (error) {
-      console.error("Delete goal error:", error);
+      toast({ title: "Error deleting goal", description: error.message, variant: "destructive" });
       return;
     }
-
+    toast({ title: "Goal deleted" });
     if (selectedGoalId === goalId) setSelectedGoalId("");
     if (editingGoalId === goalId) resetForm();
-
     await fetchGoals();
   };
 
   const handleAddContribution = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    if (!selectedGoalId || !contributionAmount) return;
+    if (!user || !selectedGoalId || !contributionAmount) return;
 
     const amount = Number(contributionAmount);
     if (Number.isNaN(amount) || amount <= 0) return;
 
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      console.error("User fetch error:", userError);
-      return;
-    }
-
-    const selectedGoal = goals.find((goal) => goal.id === selectedGoalId);
+    const selectedGoal = goals.find((g) => g.id === selectedGoalId);
     if (!selectedGoal) return;
 
-    const newSavedAmount = selectedGoal.saved_amount + amount;
+    setContributing(true);
 
     const { error } = await supabase
       .from("goals")
-      .update({
-        saved_amount: newSavedAmount,
-      })
+      .update({ saved_amount: selectedGoal.saved_amount + amount })
       .eq("id", selectedGoalId)
       .eq("user_id", user.id);
 
     if (error) {
-      console.error("Add contribution error:", error);
+      toast({ title: "Error adding contribution", description: error.message, variant: "destructive" });
+      setContributing(false);
       return;
     }
 
+    // Debit transaction so net worth reflects the contribution
+    const { error: txError } = await supabase.from("transactions").insert({
+      user_id: user.id,
+      name: `Goal: ${selectedGoal.name}`,
+      amount: -amount,
+      category: "Savings",
+      date: new Date().toISOString().split("T")[0],
+      is_manual: true,
+    });
+    if (txError) {
+      console.error("Contribution transaction error:", txError);
+    }
+
+    toast({ title: "Contribution added", description: `$${amount.toFixed(2)} added to "${selectedGoal.name}"` });
     setContributionAmount("");
     setSelectedGoalId("");
+    setContributing(false);
     await fetchGoals();
   };
 
+  if (authLoading) return null;
+
   return (
     <div className="min-h-screen bg-background">
-      <main className="max-w-4xl mx-auto px-6 py-10 space-y-8">
-        <div className="flex items-center justify-between">
-          <Link
-            to="/"
-            className="text-sm text-muted-foreground hover:text-foreground"
-          >
+      <header className="border-b border-border">
+        <div className="max-w-4xl mx-auto px-6 py-5 flex items-center justify-between">
+          <Link to="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
             ← Dashboard
           </Link>
-
-          <h1 className="text-2xl font-bold">My Goals</h1>
-
-          {!showCreateForm && (
-            <button
-              onClick={() => setShowCreateForm(true)}
-              className="px-4 py-2 rounded bg-black text-white"
-            >
-              + New Goal
-            </button>
-          )}
+          <h1 className="font-heading text-lg tracking-tight text-foreground">Goals</h1>
+          <button
+            onClick={() => { resetForm(); setShowCreateForm(true); }}
+            className="px-4 py-2 rounded-md bg-foreground text-background text-sm hover:opacity-90 transition-opacity"
+          >
+            + New Goal
+          </button>
         </div>
+      </header>
 
-        <div className="border rounded-lg p-4 space-y-4">
-          <h2 className="text-lg font-semibold">Add Contribution</h2>
+      <main className="max-w-4xl mx-auto px-6 py-10 space-y-8">
+      {pendingInvites.length > 0 && (
+        <section className="bg-card rounded-lg p-6">
+          <p className="text-sm font-body text-muted-foreground tracking-wide uppercase mb-4">
+            Pending Invites
+          </p>
+      
+          <div className="space-y-3">
+            {pendingInvites.map((invite) => (
+              <div
+                key={invite.id}
+                className="flex justify-between items-center border border-border rounded-md p-3"
+              >
+                <div>
+                  <p className="font-medium text-foreground">
+                    {invite.goals?.name || "Shared Goal"}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    You were invited to join this goal.
+                  </p>
+                </div>
+      
+                <button
+                  onClick={() => handleAcceptInvite(invite)}
+                  className="rounded-md bg-foreground text-background px-4 py-2 text-sm hover:opacity-90 transition-opacity"
+                >
+                  Accept
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+        {/* Contribution form */}
+        <section className="bg-card rounded-lg p-6">
+          <p className="text-sm font-body text-muted-foreground tracking-wide uppercase mb-4">Add Contribution</p>
 
           {loading ? (
-            <p className="text-sm text-muted-foreground">Loading goals...</p>
+            <p className="text-sm text-muted-foreground">Loading goals…</p>
           ) : goals.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              No goals yet. Create a goal first.
-            </p>
+            <p className="text-sm text-muted-foreground">No goals yet. Create a goal first.</p>
           ) : (
-            <form onSubmit={handleAddContribution} className="space-y-3">
-              <select
-                value={selectedGoalId}
-                onChange={(e) => setSelectedGoalId(e.target.value)}
-                className="w-full border p-2 rounded bg-background"
-              >
-                <option value="">Select a goal</option>
-                {goals.map((goal) => (
-                  <option key={goal.id} value={goal.id}>
-                    {goal.name}
-                  </option>
-                ))}
-              </select>
+            <form onSubmit={handleAddContribution} className="flex flex-wrap gap-3 items-end">
+              <div className="flex-1 min-w-[160px]">
+                <label className="text-xs text-muted-foreground mb-1 block">Goal</label>
+                <select
+                  value={selectedGoalId}
+                  onChange={(e) => setSelectedGoalId(e.target.value)}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  required
+                >
+                  <option value="">Select a goal</option>
+                  {goals.map((g) => (
+                    <option key={g.id} value={g.id}>{g.name}</option>
+                  ))}
+                </select>
+              </div>
 
-              <input
-                type="number"
-                placeholder="Contribution amount"
-                value={contributionAmount}
-                onChange={(e) => setContributionAmount(e.target.value)}
-                className="w-full border p-2 rounded"
-              />
+              <div className="flex-1 min-w-[120px]">
+                <label className="text-xs text-muted-foreground mb-1 block">Amount</label>
+                <input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={contributionAmount}
+                  onChange={(e) => setContributionAmount(e.target.value)}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  required
+                />
+              </div>
 
               <button
                 type="submit"
-                className="px-4 py-2 rounded bg-black text-white"
+                disabled={contributing}
+                className="rounded-md bg-foreground text-background px-4 py-2 text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
               >
-                Add Contribution
+                {contributing ? "Adding…" : "Add"}
               </button>
             </form>
           )}
-        </div>
+        </section>
 
+        {/* Create / edit goal form */}
         {showCreateForm && (
-          <div className="border rounded-lg p-4 space-y-4">
-            <h2 className="text-lg font-semibold">
-              {editingGoalId ? "Edit Goal" : "Create New Goal"}
-            </h2>
+          <section className="bg-card rounded-lg p-6">
+            <p className="text-sm font-body text-muted-foreground tracking-wide uppercase mb-4">
+              {editingGoalId ? "Edit Goal" : "New Goal"}
+            </p>
 
             <form onSubmit={handleAddOrUpdateGoal} className="space-y-3">
-              <input
-                type="text"
-                placeholder="Goal name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full border p-2 rounded"
-              />
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Name</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Emergency Fund"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  required
+                />
+              </div>
 
-              <input
-                type="number"
-                placeholder="Target amount"
-                value={targetAmount}
-                onChange={(e) => setTargetAmount(e.target.value)}
-                className="w-full border p-2 rounded"
-              />
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Target amount</label>
+                <input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={targetAmount}
+                  onChange={(e) => setTargetAmount(e.target.value)}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                  required
+                />
+              </div>
 
-              <input
-                type="date"
-                value={deadline}
-                onChange={(e) => setDeadline(e.target.value)}
-                className="w-full border p-2 rounded"
-              />
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Deadline (optional)</label>
+                <input
+                  type="date"
+                  value={deadline}
+                  onChange={(e) => setDeadline(e.target.value)}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+                />
+              </div>
 
-              <div className="flex gap-3">
+              <div className="flex gap-3 pt-1">
                 <button
                   type="submit"
-                  className="px-4 py-2 rounded bg-black text-white"
+                  disabled={submitting}
+                  className="rounded-md bg-foreground text-background px-4 py-2 text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
                 >
-                  {editingGoalId ? "Save Changes" : "Add Goal"}
+                  {submitting ? "Saving…" : editingGoalId ? "Save Changes" : "Create Goal"}
                 </button>
-
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="px-4 py-2 rounded border"
-                >
+                <button type="button" onClick={resetForm} className="rounded-md border border-border px-4 py-2 text-sm">
                   Cancel
                 </button>
               </div>
             </form>
-          </div>
+          </section>
         )}
 
-        <div className="space-y-4">
-          <h2 className="text-lg font-semibold">Your Goals</h2>
+        {/* Goals list */}
+        <section className="space-y-4">
+          <p className="text-sm font-body text-muted-foreground tracking-wide uppercase">Your Goals</p>
 
           {loading ? (
-            <p className="text-sm text-muted-foreground">Loading goals...</p>
+            <p className="text-sm text-muted-foreground">Loading…</p>
           ) : goals.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
-              You have no goals yet.
-            </p>
+            <div className="bg-card rounded-lg p-6 text-center">
+              <p className="text-sm text-muted-foreground mb-3">You have no goals yet.</p>
+              <button
+                onClick={() => setShowCreateForm(true)}
+                className="text-sm text-primary hover:underline"
+              >
+                Create your first goal →
+              </button>
+            </div>
           ) : (
             goals.map((goal) => {
-              const percent =
-                goal.target_amount > 0
-                  ? Math.min((goal.saved_amount / goal.target_amount) * 100, 100)
-                  : 0;
+              const percent = goal.target_amount > 0
+                ? Math.min(Math.round((goal.saved_amount / goal.target_amount) * 100), 100)
+                : 0;
 
               return (
-                <div key={goal.id} className="border rounded-lg p-4 space-y-3">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <p className="font-semibold">{goal.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        ${goal.saved_amount.toFixed(2)} / ${goal.target_amount.toFixed(2)}
-                      </p>
-                      {goal.deadline && (
-                        <p className="text-sm text-muted-foreground">
-                          Deadline: {goal.deadline}
-                        </p>
-                      )}
-                    </div>
+                <div key={goal.id} className="bg-card rounded-lg p-6 space-y-3">
 
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEditGoal(goal)}
-                        className="px-3 py-1 text-sm border rounded"
-                      >
-                        Edit
-                      </button>
-
-                      <button
-                        onClick={() => handleDeleteGoal(goal.id)}
-                        className="px-3 py-1 text-sm border rounded"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </div>
-
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="font-medium text-foreground">{goal.name}</p>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  ${Number(goal.saved_amount).toFixed(2)} / ${Number(goal.target_amount).toFixed(2)}
+                </p>
+                {goal.deadline && (
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Deadline: {goal.deadline}
+                  </p>
+                )}
+              </div>
+            
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setInvitingGoalId(goal.id)}
+                  className="px-3 py-1 text-xs rounded-md border border-border hover:bg-muted transition-colors"
+                >
+                  Invite
+                </button>
+            
+                <button
+                  onClick={() => handleEditGoal(goal)}
+                  className="px-3 py-1 text-xs rounded-md border border-border hover:bg-muted transition-colors"
+                >
+                  Edit
+                </button>
+            
+                <button
+                  onClick={() => handleDeleteGoal(goal.id)}
+                  className="px-3 py-1 text-xs rounded-md border border-border hover:bg-muted transition-colors"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
                   <div>
-                    <div className="w-full bg-muted h-2 rounded-full">
+                    <div className="w-full bg-muted h-2 rounded-full overflow-hidden">
                       <div
-                        className="h-2 bg-black rounded-full"
+                        className="h-full bg-foreground rounded-full transition-all duration-500"
                         style={{ width: `${percent}%` }}
                       />
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {percent.toFixed(0)}% complete
-                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">{percent}% complete</p>
+
+                    {invitingGoalId === goal.id && (
+                      <div className="flex gap-2 pt-2">
+                        <input
+                          type="email"
+                          placeholder="Contributor email"
+                          value={inviteEmail}
+                          onChange={(e) => setInviteEmail(e.target.value)}
+                          className="flex-1 rounded-md border border-border bg-background px-3 py-2 text-sm"
+                        />
+                    
+                        <button
+                          onClick={() => handleInviteUser(goal.id)}
+                          disabled={sendingInvite}
+                          className="rounded-md bg-foreground text-background px-4 py-2 text-sm hover:opacity-90 transition-opacity disabled:opacity-50"
+                        >
+                          {sendingInvite ? "Sending…" : "Send"}
+                        </button>
+                    
+                        <button
+                          onClick={() => {
+                            setInvitingGoalId(null);
+                            setInviteEmail("");
+                          }}
+                          className="rounded-md border border-border px-4 py-2 text-sm"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               );
             })
           )}
-        </div>
+        </section>
       </main>
     </div>
   );
