@@ -238,7 +238,7 @@ const handleInviteUser = async (goalId: string) => {
   const handleAcceptInvite = async (invite: any) => {
   if (!user) return;
 
-  const { error: memberError } = await supabase.from("goal_members").insert({
+  const { error: memberError } = await supabase.from("goal_members").upsert({
     goal_id: invite.goal_id,
     user_id: user.id,
     role: "member",
