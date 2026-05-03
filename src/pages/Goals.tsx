@@ -117,6 +117,13 @@ export default function Goals() {
       `)
       .eq("invitee_email", user.email.trim().toLowerCase())
       .eq("status", "pending");
+
+    console.log("Logged in email:", user.email);
+    console.log("Query email:", user.email.trim().toLowerCase());
+    console.log("Pending invite error:", error);
+    console.log("Pending invite data:", data);
+
+    
   
     if (error) {
       toast({
