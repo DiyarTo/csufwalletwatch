@@ -218,6 +218,9 @@ const handleInviteUser = async (goalId: string) => {
   }
 
   toast({ title: "Invite sent" });
+
+  await fetchPendingInvites();
+  
   setInviteEmail("");
   setInvitingGoalId(null);
   setSendingInvite(false);
