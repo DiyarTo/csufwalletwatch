@@ -8,7 +8,7 @@ A personal finance web application built for CPSC 362 — Software Engineering a
 
 - Dashboard with real-time net position, monthly spending pace, goal progress, upcoming bills, and net worth chart
 - Transaction management with add, edit, and delete
-- Bank account linking via Plaid API
+- Bank account linking via *mock*Plaid API
 - Savings goals with contributions and progress tracking
 - Budget tracking by category with spending breakdowns
 - Net worth visualization with interactive charts
