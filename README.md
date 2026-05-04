@@ -3,6 +3,7 @@
 A personal finance web application built for CPSC 362 — Software Engineering at Cal State Fullerton. Wallet Watch helps users track spending, income, savings goals, and overall financial health in one dashboard.
 
 **Live App:** [cpsc-362-project-plum.vercel.app](https://cpsc-362-project-plum.vercel.app)
+for demo purposes use email:anghamifake@gmail.com pass:123456 or signup with own email
 
 ## Features
 
