@@ -82,6 +82,8 @@ const ratio = income > 0 ? Math.min(spending / income, 1) : 0;
       </div>
     </section>
   );
+
+  
 };
 
 export default MonthlyPace;
