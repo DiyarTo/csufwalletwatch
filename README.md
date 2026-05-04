@@ -1,73 +1,39 @@
-# Welcome to your Lovable project
+# Wallet Watch
 
-## Project info
+A personal finance web application built for CPSC 362 — Software Engineering at Cal State Fullerton. Wallet Watch helps users track spending, income, savings goals, and overall financial health in one dashboard.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+**Live App:** [cpsc-362-project-plum.vercel.app](https://cpsc-362-project-plum.vercel.app)
 
-## How can I edit this code?
+## Features
 
-There are several ways of editing your application.
+- Dashboard with real-time net position, monthly spending pace, goal progress, upcoming bills, and net worth chart
+- Transaction management with add, edit, and delete
+- Bank account linking via Plaid API
+- Savings goals with contributions and progress tracking
+- Budget tracking by category with spending breakdowns
+- Net worth visualization with interactive charts
+- Authentication with signup, login, and password recovery
 
-**Use Lovable**
+## Tech Stack
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+- **Frontend:** React, TypeScript, Vite
+- **Styling:** Tailwind CSS, shadcn/ui
+- **Backend/Database:** Supabase (PostgreSQL with Row Level Security)
+- **Authentication:** Supabase Auth
+- **Charts:** Recharts
+- **Hosting:** Vercel
+- **gen ai used for debugging and configuration**
 
-Changes made via Lovable will be committed automatically to this repo.
+## System Requirements
 
-**Use your preferred IDE**
+- Node.js 18+
+- npm or bun
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
 
-Follow these steps:
+## Team Members
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
-
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with:
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
-
-## Can I connect a custom domain to my Lovable project?
-
-Yes, you can!
-
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
-
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+- Diyar Tohomer — Project Lead, Web Application Framework, Supabase Setup, Transaction Categorization...
+- Luc Brown — Authentication, User Accounts, Savings Goals, Transaction History, Budget Feature...
+- George El-Abed — Dashboard Real Data Integration, Net Worth Chart, Vercel Deployment, UI Fixes...
+- Nyela R. — 
