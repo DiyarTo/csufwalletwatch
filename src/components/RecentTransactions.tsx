@@ -65,6 +65,7 @@ const RecentTransactions = () => {
             disabled={page === 0}
             className="text-sm text-muted-foreground hover:text-foreground disabled:opacity-30 transition-colors"
           >
+            
             ← Previous
           </button>
           <span className="text-xs text-muted-foreground">
